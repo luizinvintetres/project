@@ -16,6 +16,7 @@ def _metrics(df: pd.DataFrame) -> None:
 
 def render() -> None:
     st.header("📊 Dashboard Geral")
+
     tx = db.get_transactions()
     if tx.empty:
         st.info("Nenhuma transação disponível.")
@@ -23,6 +24,11 @@ def render() -> None:
 
     acc = db.get_accounts()[["acct_id", "nickname", "fund_id"]]
     funds = db.get_funds()[["fund_id", "name"]]
+
+    if acc.empty or funds.empty:
+        st.warning("Você precisa cadastrar fundos e contas antes de visualizar o dashboard.")
+        return
+
     df = (
         tx
         .merge(acc, on="acct_id", how="left")
@@ -30,11 +36,16 @@ def render() -> None:
         .rename(columns={"nickname": "account", "name": "fund"})
     )
 
+    if "fund" not in df.columns or "account" not in df.columns:
+        st.warning("Erro ao preparar os dados: verifique se há contas e fundos corretamente relacionados.")
+        return
+
     # Filtros
-    sel_fund = st.multiselect("Fundos", sorted(df["fund"].unique()))
+    sel_fund = st.multiselect("Fundos", sorted(df["fund"].dropna().unique()))
     if sel_fund:
         df = df[df["fund"].isin(sel_fund)]
-    sel_acct = st.multiselect("Contas", sorted(df["account"].unique()))
+
+    sel_acct = st.multiselect("Contas", sorted(df["account"].dropna().unique()))
     if sel_acct:
         df = df[df["account"].isin(sel_acct)]
 
@@ -59,7 +70,7 @@ def render() -> None:
         .sort_values("date")
     )
 
-    # Gráfico de barras empilhadas (positivas e negativas)
+    # Gráfico de barras coloridas (positivo = azul, negativo = vermelho)
     chart = alt.Chart(df_daily).mark_bar().encode(
         x=alt.X("date:T", title="Data"),
         y=alt.Y("amount:Q", title="Valor"),
