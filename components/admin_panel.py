@@ -29,8 +29,7 @@ def render() -> None:
         nickname = st.text_input("Apelido", key="nickname")
         if st.button("Adicionar Conta", key="add_acct") and bank:
             db.add_account(
-                fund_id=fund_options[sel_fund_name],
-                bank=bank, agency=agency, number=number, nickname=nickname
+                {"bank": bank, "agency": agency, "number":number, "nickname":nickname}
             )
             st.success("Conta adicionada!")
 
@@ -60,13 +59,13 @@ def render() -> None:
                 df_new = parser.read(file)
                 acct_id = acct_opts[sel_acct_nick]
                 for _, row in df_new.iterrows():
-                    db.add_transaction(
-                        acct_id=acct_id,
-                        date=row["date"],
-                        description=row["description"],
-                        amount=row["amount"],
-                        liquidation=row["liquidation"]
-                    )
+                    db.add_transaction({
+                        "acct_id": acct_id,
+                        "date": row["date"].strftime("%Y-%m-%d"),
+                        "description": row["description"],
+                        "amount": float(row["amount"]),
+                        "liquidation": bool(row["liquidation"])
+                    })
                 st.success(f"{len(df_new)} transações enviadas com sucesso!")
             except Exception as e:
                 st.error(f"Erro ao importar extrato: {e}")
