@@ -28,7 +28,7 @@ def render() -> None:
         number = st.text_input("Número da Conta", key="number")
         nickname = st.text_input("Apelido", key="nickname")
         if st.button("Adicionar Conta", key="add_acct") and bank:
-            db.insert_account(
+            db.add_account(
                 {"bank": bank, "agency": agency, "number":number, "nickname":nickname}
             )
             st.success("Conta adicionada!")
@@ -57,7 +57,7 @@ def render() -> None:
                 df_new = parser.read(file)
                 acct_id = acct_opts[sel_acct_nick]
                 for _, row in df_new.iterrows():
-                    db.insert_transaction({
+                    db.add_transaction({
                         "acct_id": acct_id,
                         "date": row["date"].strftime("%Y-%m-%d"),
                         "description": row["description"],
