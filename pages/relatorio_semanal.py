@@ -86,18 +86,29 @@ def render() -> None:
     summary = pd.concat([abertura, entradas, saidas, liquida], axis=1).fillna(0)
 
     funds_all = db.get_funds()[["fund_id", "name"]]
-    summary = summary.merge(funds_all, on="fund_id").rename(columns={"name": "Nome do fundo"})
-
-    summary = summary[[
-        "Nome do fundo", "Saldo de Abertura", "Entradas (7 d)", "Saídas (7 d)", "Liquidações"
-    ]].reset_index(drop=True)
-
-    # ----------------------------
-    # Exibir com formatação monetária apenas nas colunas numéricas
-    # ----------------------------
-    currency_cols = ["Saldo de Abertura", "Entradas (7 d)", "Saídas (7 d)", "Liquidações"]
-    fmt = lambda x: f"R$ {x:,.2f}"
-    st.dataframe(
-        summary.style.format({col: fmt for col in currency_cols}),
-        use_container_width=True,
+    summary = (
+        summary
+        .merge(funds_all, on="fund_id")
+        .rename(columns={"name": "Nome do fundo"})
     )
+
+    summary = (
+        summary[[
+            "Nome do fundo",
+            "Saldo de Abertura",
+            "Entradas (7 d)",
+            "Saídas (7 d)",
+            "Liquidações"
+        ]]
+        .reset_index(drop=True)
+    )
+
+    # ----------------------------
+    # Pré‑formatar colunas numéricas como strings com R$
+    # ----------------------------
+    display_df = summary.copy()
+    currency_cols = ["Saldo de Abertura", "Entradas (7 d)", "Saídas (7 d)", "Liquidações"]
+    for col in currency_cols:
+        display_df[col] = display_df[col].map(lambda x: f"R$ {x:,.2f}")
+
+    st.dataframe(display_df, use_container_width=True)
