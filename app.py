@@ -21,7 +21,7 @@ st.set_page_config(
     layout="wide",
     page_icon="💼",
 )
-st.title("🏦 Bank Statement Manager")
+st.title("🏦 PLGN Tesouraria")
 
 # ----------------------------------------------------------------------------- #
 # Sidebar e roteamento
