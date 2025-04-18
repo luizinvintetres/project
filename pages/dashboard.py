@@ -68,20 +68,22 @@ def render() -> None:
 
     _metrics(df)
 
-    # Agrupar por data e somar entradas/saídas
+    # Classificar entradas/saídas
+    df["type"] = df["amount"].apply(lambda x: "Entrada" if x > 0 else "Saída")
+
+    # Agrupar por data e tipo
     df_daily = (
-        df.groupby("date")["amount"]
+        df.groupby(["date", "type"])["amount"]
         .sum()
         .reset_index()
         .sort_values("date")
     )
 
-    # Gráfico de barras coloridas (positivo = azul, negativo = vermelho)
+    # Gráfico de barras coloridas
     chart = alt.Chart(df_daily).mark_bar().encode(
         x=alt.X("date:T", title="Data"),
         y=alt.Y("amount:Q", title="Valor"),
         color=alt.Color("type:N", scale=alt.Scale(domain=["Entrada", "Saída"], range=["steelblue", "crimson"])),
-        column=alt.Column("type:N", header=alt.Header(labelOrient="bottom")),
         tooltip=["date:T", "amount:Q", "type:N"]
     ).properties(height=300).configure_axisX(labelAngle=-45)
 
