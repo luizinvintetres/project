@@ -54,16 +54,24 @@ def render() -> None:
             try:
                 module_name = f"components.modelos_extratos.{model_options[sel_model]}"
                 parser = importlib.import_module(module_name)
-                df_new = parser.read(file)
+                df_raw = parser.read(file)
                 acct_id = acct_opts[sel_acct_nick]
-                for _, row in df_new.iterrows():
-                    db.insert_transaction({
-                        "acct_id": acct_id,
-                        "date": row["date"].strftime("%Y-%m-%d"),
-                        "description": row["description"],
-                        "amount": float(row["amount"]),
-                        "liquidation": bool(row["liquidation"])
-                    })
-                st.success(f"{len(df_new)} transações enviadas com sucesso!")
+
+                # Filtra datas já importadas
+                from utils.transforms import filter_already_imported
+                df_new = filter_already_imported(df_raw, acct_id)
+
+                if df_new.empty:
+                    st.warning("Todas as datas deste extrato já foram importadas.")
+                else:
+                    for _, row in df_new.iterrows():
+                        db.insert_transaction({
+                            "acct_id": acct_id,
+                            "date": row["date"].strftime("%Y-%m-%d"),
+                            "description": row["description"],
+                            "amount": float(row["amount"]),
+                            "liquidation": bool(row["liquidation"])
+                        })
+                    st.success(f"{len(df_new)} novas transações enviadas com sucesso!")
             except Exception as e:
                 st.error(f"Erro ao importar extrato: {e}")
