@@ -17,7 +17,7 @@ from components import admin_panel
 # Configuração geral do app
 # ----------------------------------------------------------------------------- #
 st.set_page_config(
-    page_title="Bank Statement Manager",
+    page_title="PLGN Tesouraria",
     layout="wide",
     page_icon="💼",
 )
