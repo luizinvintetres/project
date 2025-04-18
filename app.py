@@ -2,17 +2,16 @@
 Ponto de entrada da aplicação Streamlit
 ---------------------------------------
 
-– Navegação na sidebar (Dashboard | Relatório Semanal)
-– Painel ⚙️ Administração exibido dentro da página
-  (por enquanto visível a todos; depois basta
-   limitar pelo campo `is_admin` do usuário em sessão)
+– Navegação na sidebar
+– Cada página é um módulo separado
+– Administração agora é uma tela própria (não um expander)
 """
 from __future__ import annotations
 
 import streamlit as st
 from components.sidebar import show_sidebar
-from components import admin_panel
 from pages import dashboard, relatorio_semanal
+from components import admin_panel
 
 # ----------------------------------------------------------------------------- #
 # Configuração geral do app
@@ -25,24 +24,24 @@ st.set_page_config(
 st.title("🏦 Bank Statement Manager")
 
 # ----------------------------------------------------------------------------- #
-# Sidebar e seleção de página
+# Sidebar e roteamento
 # ----------------------------------------------------------------------------- #
-page = show_sidebar()   # retorna "Dashboard" ou "Relatório Semanal"
+page = show_sidebar()  # retorna: "Dashboard", "Relatório Semanal", "Administração"
 
 # ----------------------------------------------------------------------------- #
-# Painel de administração (visível enquanto não há autenticação)
-# ----------------------------------------------------------------------------- #
-# Quando o sistema de login estiver pronto, troque a condição para:
-# if st.session_state.get("user", {}).get("is_admin", False):
-with st.expander("⚙️ Administração", expanded=False):
-    admin_panel.render()
-
-# ----------------------------------------------------------------------------- #
-# Roteamento de páginas
+# Router de páginas
 # ----------------------------------------------------------------------------- #
 if page == "Dashboard":
     dashboard.render()
+
 elif page == "Relatório Semanal":
     relatorio_semanal.render()
+
+elif page == "Administração":
+    # Exibe o painel completo de cadastro e upload
+    st.subheader("⚙️ Painel de Administração")
+    st.markdown("Gerencie fundos, contas e importe extratos.")
+    admin_panel.render()
+
 else:
-    st.write("Página não encontrada.")
+    st.warning("Página não encontrada.")
