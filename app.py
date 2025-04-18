@@ -23,7 +23,7 @@ st.title("🏦 PLGN Tesouraria")
 # Imports de módulos que utilizam comandos Streamlit devem vir após set_page_config
 # -----------------------------------------------------------------------------
 from components.sidebar import show_sidebar
-from pages import dashboard, relatorio_semanal
+from pages_custom import dashboard, relatorio_semanal
 from components import admin_panel
 
 # -----------------------------------------------------------------------------
