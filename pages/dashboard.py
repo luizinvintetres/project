@@ -22,7 +22,9 @@ def render() -> None:
     if tx.empty:
         st.info("Nenhuma transação disponível.")
         return
-    tx['date'] = pd.to_datetime(tx['date'])
+    # Garante datetime e remove datas inválidas
+    tx["date"] = pd.to_datetime(tx["date"], errors="coerce")
+    tx = tx.dropna(subset=["date"])
 
     # Carrega contas e fundos
     acc = db.get_accounts()[["acct_id", "nickname", "fund_id"]]
@@ -31,13 +33,17 @@ def render() -> None:
         st.warning("Você precisa cadastrar fundos e contas antes de visualizar o dashboard.")
         return
 
-    # Faz merge apenas de registros válidos (inner) para garantir fund关联
+    # Faz merge apenas de registros válidos (inner) para garantir relacionamentos corretos
     df = (
         tx
         .merge(acc, on="acct_id", how="inner")
         .merge(funds, on="fund_id", how="inner")
         .rename(columns={"nickname": "account", "name": "fund"})
     )
+
+    if df.empty:
+        st.warning("Não há transações vinculadas a contas ou fundos cadastrados.")
+        return
 
     # Filtro de fundos usando todos os fundos cadastrados
     all_funds = sorted(funds['name'].tolist())
@@ -52,6 +58,12 @@ def render() -> None:
     sel_acct = st.multiselect("Contas", all_accounts)
     if sel_acct:
         df = df[df["account"].isin(sel_acct)]
+
+    # Remove possíveis NaT restantes e reavalia
+    df = df.dropna(subset=["date"])
+    if df.empty:
+        st.warning("Não há dados para os filtros selecionados.")
+        return
 
     # Slider de período com base no dataframe filtrado
     min_date = df["date"].min().date()
@@ -76,8 +88,8 @@ def render() -> None:
         df
         .groupby(df["date"].dt.date)["amount"]
         .sum()
-        .reset_index()
-        .rename(columns={"date": "date", "amount": "amount"})
+        .reset_index(name="amount")
+        .rename(columns={"date": "date"})
         .sort_values("date")
     )
 
