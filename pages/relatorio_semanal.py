@@ -1,6 +1,3 @@
-"""
-Relatório automático dos últimos 7 dias
-"""
 from __future__ import annotations
 
 """Weekly Summary Report component for Streamlit app.
