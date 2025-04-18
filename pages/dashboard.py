@@ -18,15 +18,11 @@ def render() -> None:
     st.header("📊 Dashboard Geral")
 
     tx = db.get_transactions()
-    if tx.empty:
-        st.info("Nenhuma transação disponível.")
-        return
-
     acc = db.get_accounts()[["acct_id", "nickname", "fund_id"]]
     funds = db.get_funds()[["fund_id", "name"]]
 
-    if acc.empty or funds.empty:
-        st.warning("Você precisa cadastrar fundos e contas antes de visualizar o dashboard.")
+    if tx.empty or acc.empty or funds.empty:
+        st.info("Cadastre fundos, contas e transações para visualizar o dashboard.")
         return
 
     df = (
@@ -62,30 +58,32 @@ def render() -> None:
     )
     df = df[(df["date"].dt.date >= start) & (df["date"].dt.date <= end)]
 
+    if df.empty:
+        st.warning("Nenhuma transação encontrada no período selecionado.")
+        return
+
     # Métricas
     _metrics(df)
 
-    # Agrupar por data e somar entradas/saídas
-    df_daily = (
-        df.groupby("date")["amount"]
+    # Agrupar por data e tipo de transação
+    df["tipo"] = df["amount"].apply(lambda x: "Entrada" if x > 0 else "Saída")
+    df_grouped = (
+        df.groupby([df["date"].dt.date, "tipo"])["amount"]
         .sum()
         .reset_index()
-        .sort_values("date")
+        .rename(columns={"date": "Data", "amount": "Valor", "tipo": "Tipo"})
     )
 
-    # Gráfico
-    chart = alt.Chart(df_daily).mark_bar().encode(
-        x=alt.X("date:T", title="Data"),
-        y=alt.Y("amount:Q", title="Valor"),
-        color=alt.condition(
-            "datum.amount >= 0",
-            alt.value("steelblue"),
-            alt.value("crimson")
-        ),
-        tooltip=["date:T", "amount:Q"]
-    ).properties(height=300)
+    # Gráfico de barras lado a lado
+    chart = alt.Chart(df_grouped).mark_bar().encode(
+        x=alt.X("Data:T", title="Data"),
+        y=alt.Y("Valor:Q", title="Valor"),
+        color=alt.Color("Tipo:N", scale=alt.Scale(domain=["Entrada", "Saída"], range=["steelblue", "crimson"])),
+        tooltip=["Data:T", "Tipo:N", "Valor:Q"]
+    ).properties(height=350)
 
     st.altair_chart(chart, use_container_width=True)
 
     # Tabela
-    st.dataframe(df[["date", "fund", "account", "description", "amount"]])
+    st.dataframe(df[["date", "fund", "account", "description", "amount"]].sort_values("date"))
+    
