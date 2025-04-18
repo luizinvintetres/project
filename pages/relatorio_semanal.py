@@ -8,8 +8,6 @@ Displays one row per fund with:
 - Entradas (7 d)
 - Saídas (7 d)
 - Liquidações (7 d)
-
-No per‑transaction table is shown, exactly as requested.
 """
 
 from datetime import datetime, timedelta
@@ -54,17 +52,14 @@ def render() -> None:
         return
 
     # ----------------------------
-    # Saldo de abertura (até D‑7) — acumulado por fundo
+    # Saldo de abertura até D‑7 (acumulado por fundo)
     # ----------------------------
     df_sorted = (
         tx.sort_values("date")
           .assign(balance=lambda d: d.groupby("fund_id")["amount"].cumsum())
     )
     prev = df_sorted[df_sorted["date"].dt.date < start]
-    abertura = (
-        prev.groupby("fund_id")["balance"].last()
-            .rename("Saldo de Abertura")
-    )
+    abertura = prev.groupby("fund_id")["balance"].last().rename("Saldo de Abertura")
 
     # ----------------------------
     # Métricas dos últimos 7 dias
@@ -86,26 +81,23 @@ def render() -> None:
     )
 
     # ----------------------------
-    # Monte resumo final
+    # Resumo final
     # ----------------------------
-    summary = (
-        pd.concat([abertura, entradas, saidas, liquida], axis=1)
-          .fillna(0)
-          .reset_index()
-    )
+    summary = pd.concat([abertura, entradas, saidas, liquida], axis=1).fillna(0)
 
     funds_all = db.get_funds()[["fund_id", "name"]]
-    summary = summary.merge(funds_all, on="fund_id")
+    summary = summary.merge(funds_all, on="fund_id").rename(columns={"name": "Nome do fundo"})
 
     summary = summary[[
-        "name", "Saldo de Abertura", "Entradas (7 d)", "Saídas (7 d)", "Liquidações"
-    ]].rename(columns={"name": "Nome do fundo"})
+        "Nome do fundo", "Saldo de Abertura", "Entradas (7 d)", "Saídas (7 d)", "Liquidações"
+    ]].reset_index(drop=True)
 
     # ----------------------------
-    # Exibir
+    # Exibir com formatação monetária apenas nas colunas numéricas
     # ----------------------------
+    currency_cols = ["Saldo de Abertura", "Entradas (7 d)", "Saídas (7 d)", "Liquidações"]
     fmt = lambda x: f"R$ {x:,.2f}"
     st.dataframe(
-        summary.style.format(fmt),
+        summary.style.format({col: fmt for col in currency_cols}),
         use_container_width=True,
     )
