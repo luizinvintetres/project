@@ -103,7 +103,7 @@ def _form_upload() -> None:
 def show_sidebar() -> str:
     with st.sidebar:
         # 🖼️ Logo no topo
-        st.image("static/plgn_logo.png", width=180)  # ajuste o caminho conforme necessário
+        st.image("static/plgn_logo.png", width=240)  # ajuste o caminho conforme necessário
 
         st.markdown("## Navegação")
         page = st.radio("", ["Dashboard", "Relatório Semanal", "Administração"])
