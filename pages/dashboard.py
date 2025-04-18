@@ -16,7 +16,6 @@ def _metrics(df: pd.DataFrame) -> None:
 
 def render() -> None:
     st.header("📊 Dashboard Geral")
-
     tx = db.get_transactions()
     if tx.empty:
         st.info("Nenhuma transação disponível.")
@@ -26,7 +25,7 @@ def render() -> None:
     funds = db.get_funds()[["fund_id", "name"]]
 
     if acc.empty or funds.empty:
-        st.warning("Cadastre contas e fundos antes de prosseguir.")
+        st.warning("Você precisa cadastrar fundos e contas antes de visualizar o dashboard.")
         return
 
     df = (
@@ -36,12 +35,14 @@ def render() -> None:
         .rename(columns={"nickname": "account", "name": "fund"})
     )
 
-    sel_fund = st.multiselect("Fundos", sorted(df["fund"].dropna().unique()))
-    if not sel_fund:
-        st.info("Selecione ao menos um fundo para visualizar os dados.")
+    if "fund" not in df.columns or "account" not in df.columns:
+        st.warning("Erro ao preparar os dados: verifique se há contas e fundos corretamente relacionados.")
         return
 
-    df = df[df["fund"].isin(sel_fund)]
+    # Filtros
+    sel_fund = st.multiselect("Fundos", sorted(df["fund"].dropna().unique()))
+    if sel_fund:
+        df = df[df["fund"].isin(sel_fund)]
 
     sel_acct = st.multiselect("Contas", sorted(df["account"].dropna().unique()))
     if sel_acct:
@@ -67,12 +68,16 @@ def render() -> None:
 
     _metrics(df)
 
-    # Prepara dados para gráfico de barras
-    df_bar = df.copy()
-    df_bar["type"] = df_bar["amount"].apply(lambda x: "Entrada" if x > 0 else "Saída")
-    df_bar["amount"] = df_bar["amount"].abs()
+    # Agrupar por data e somar entradas/saídas
+    df_daily = (
+        df.groupby("date")["amount"]
+        .sum()
+        .reset_index()
+        .sort_values("date")
+    )
 
-    chart = alt.Chart(df_bar).mark_bar().encode(
+    # Gráfico de barras coloridas (positivo = azul, negativo = vermelho)
+    chart = alt.Chart(df_daily).mark_bar().encode(
         x=alt.X("date:T", title="Data"),
         y=alt.Y("amount:Q", title="Valor"),
         color=alt.Color("type:N", scale=alt.Scale(domain=["Entrada", "Saída"], range=["steelblue", "crimson"])),
