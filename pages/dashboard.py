@@ -17,83 +17,63 @@ def _metrics(df: pd.DataFrame) -> None:
 def render() -> None:
     st.header("📊 Dashboard Geral")
 
-    # Carrega transações e converte data
     tx = db.get_transactions()
     if tx.empty:
         st.info("Nenhuma transação disponível.")
         return
-    # Garante datetime e remove datas inválidas
-    tx["date"] = pd.to_datetime(tx["date"], errors="coerce")
-    tx = tx.dropna(subset=["date"])
 
-    # Carrega contas e fundos
     acc = db.get_accounts()[["acct_id", "nickname", "fund_id"]]
-    funds = db.get_funds()[["fund_id", "name"]].drop_duplicates()
+    funds = db.get_funds()[["fund_id", "name"]]
+
     if acc.empty or funds.empty:
         st.warning("Você precisa cadastrar fundos e contas antes de visualizar o dashboard.")
         return
 
-    # Faz merge apenas de registros válidos (inner) para garantir relacionamentos corretos
     df = (
         tx
-        .merge(acc, on="acct_id", how="inner")
-        .merge(funds, on="fund_id", how="inner")
+        .merge(acc, on="acct_id", how="left")
+        .merge(funds, on="fund_id", how="left")
         .rename(columns={"nickname": "account", "name": "fund"})
     )
 
-    if df.empty:
-        st.warning("Não há transações vinculadas a contas ou fundos cadastrados.")
+    if "fund" not in df.columns or "account" not in df.columns:
+        st.warning("Erro ao preparar os dados: verifique se há contas e fundos corretamente relacionados.")
         return
 
-    # Filtro de fundos usando todos os fundos cadastrados
-    all_funds = sorted(funds['name'].tolist())
-    sel_fund = st.multiselect("Fundos", all_funds)
+    # Filtros
+    sel_fund = st.multiselect("Fundos", sorted(df["fund"].dropna().unique()))
     if not sel_fund:
         st.info("Selecione ao menos um fundo para visualizar os dados.")
         return
+
     df = df[df["fund"].isin(sel_fund)]
 
-    # Filtro de contas, opcional
-    all_accounts = sorted(df["account"].unique().tolist())
-    sel_acct = st.multiselect("Contas", all_accounts)
+    sel_acct = st.multiselect("Contas", sorted(df["account"].dropna().unique()))
     if sel_acct:
         df = df[df["account"].isin(sel_acct)]
 
-    # Remove possíveis NaT restantes e reavalia
-    df = df.dropna(subset=["date"])
-    if df.empty:
-        st.warning("Não há dados para os filtros selecionados.")
-        return
-
-    # Slider de período com base no dataframe filtrado
-    min_date = df["date"].min().date()
-    max_date = df["date"].max().date()
-    start_date, end_date = st.slider(
+    # Slider de datas
+    min_date, max_date = df["date"].min().date(), df["date"].max().date()
+    start, end = st.slider(
         "Período de Visualização",
         min_value=min_date,
         max_value=max_date,
         value=(min_date, max_date)
     )
-    df = df[(df["date"].dt.date >= start_date) & (df["date"].dt.date <= end_date)]
+    df = df[(df["date"].dt.date >= start) & (df["date"].dt.date <= end)]
 
-    if df.empty:
-        st.warning("Não há dados para o período e filtros selecionados.")
-        return
-
-    # Exibe métricas
+    # Métricas
     _metrics(df)
 
-    # Prepara dados diários para o gráfico
+    # Agrupar por data e somar entradas/saídas
     df_daily = (
-        df
-        .groupby(df["date"].dt.date)["amount"]
+        df.groupby("date")["amount"]
         .sum()
-        .reset_index(name="amount")
-        .rename(columns={"date": "date"})
+        .reset_index()
         .sort_values("date")
     )
 
-    # Gráfico de barras
+    # Gráfico
     chart = alt.Chart(df_daily).mark_bar().encode(
         x=alt.X("date:T", title="Data"),
         y=alt.Y("amount:Q", title="Valor"),
@@ -104,7 +84,8 @@ def render() -> None:
         ),
         tooltip=["date:T", "amount:Q"]
     ).properties(height=300)
+
     st.altair_chart(chart, use_container_width=True)
 
-    # Tabela de transações filtradas
+    # Tabela
     st.dataframe(df[["date", "fund", "account", "description", "amount"]])
