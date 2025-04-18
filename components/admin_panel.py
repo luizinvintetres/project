@@ -2,16 +2,10 @@
 from __future__ import annotations
 import streamlit as st
 import pandas as pd
+import importlib
 from services import supabase_client as db
 
 def render() -> None:
-    """
-    Painel de administração: fundos, contas e upload de extratos.
-    Pode ser chamado dentro de um expander ou modal.
-
-    ⚠️  Quando o sistema de login estiver pronto,
-        envolva esta função em um if st.session_state["user"]["is_admin"].
-    """
     st.subheader("➕ Novo Fundo")
     fund_name = st.text_input("Nome do Fundo", key="fund_name")
     fund_cnpj = st.text_input("CNPJ", key="fund_cnpj")
@@ -49,7 +43,30 @@ def render() -> None:
     else:
         acct_opts = {row['nickname']: row['acct_id'] for _, row in accounts.iterrows()}
         sel_acct_nick = st.selectbox("Conta", list(acct_opts.keys()))
-        file = st.file_uploader("Extrato (CSV ou XLSX)", type=["csv", "xlsx", "xls"])
+        
+        # NOVO: seleção do tipo de extrato
+        model_options = {
+            "Bradesco": "bradesco",
+            "Itaú": "itau",
+            "Genérico CSV": "generic_csv"
+        }
+        sel_model = st.selectbox("Modelo de Extrato", list(model_options.keys()))
+        file = st.file_uploader("Extrato", type=["csv", "xlsx", "xls"])
+
         if file:
-            n = db.import_transactions(file, acct_opts[sel_acct_nick])
-            st.success(f"{n} transações enviadas!")
+            try:
+                module_name = f"components.modelos_extratos.{model_options[sel_model]}"
+                parser = importlib.import_module(module_name)
+                df_new = parser.read(file)
+                acct_id = acct_opts[sel_acct_nick]
+                for _, row in df_new.iterrows():
+                    db.add_transaction(
+                        acct_id=acct_id,
+                        date=row["date"],
+                        description=row["description"],
+                        amount=row["amount"],
+                        liquidation=row["liquidation"]
+                    )
+                st.success(f"{len(df_new)} transações enviadas com sucesso!")
+            except Exception as e:
+                st.error(f"Erro ao importar extrato: {e}")
