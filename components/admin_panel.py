@@ -56,10 +56,10 @@ def render() -> None:
                 parser = importlib.import_module(module_name)
                 df_raw = parser.read(file)
                 acct_id = acct_opts[sel_acct_nick]
+                filename = file.name
 
-                # Filtra datas já importadas
-                from utils.transforms import filter_already_imported
-                df_new = filter_already_imported(df_raw, acct_id)
+                from utils.transforms import filter_already_imported_by_file
+                df_new = filter_already_imported_by_file(df_raw, acct_id, filename)
 
                 if df_new.empty:
                     st.warning("Todas as datas deste extrato já foram importadas.")
@@ -70,8 +70,25 @@ def render() -> None:
                             "date": row["date"].strftime("%Y-%m-%d"),
                             "description": row["description"],
                             "amount": float(row["amount"]),
-                            "liquidation": bool(row["liquidation"])
+                            "liquidation": bool(row["liquidation"]),
+                            "filename": filename
                         })
                     st.success(f"{len(df_new)} novas transações enviadas com sucesso!")
+
             except Exception as e:
                 st.error(f"Erro ao importar extrato: {e}")
+
+st.divider()
+st.subheader("🧾 Arquivos importados")
+
+logs = db.get_import_logs()
+if logs.empty:
+    st.info("Nenhum arquivo foi importado ainda.")
+else:
+    filenames = sorted(logs["filename"].dropna().unique())
+    for f in filenames:
+        col1, col2 = st.columns([6, 1])
+        col1.write(f)
+        if col2.button("❌", key=f"del_{f}"):
+            db.delete_file_records(f)
+            st.success(f"Registros do arquivo '{f}' apagados.")

@@ -62,11 +62,25 @@ def get_imported_dates(acct_id: str) -> set[date]:
     # Converte string → datetime.date
     return {date.fromisoformat(r["import_date"]) for r in (resp.data or [])}
 
-def add_import_log(acct_id: str, dates: set[datetime.date]) -> None:
+def add_import_log(acct_id: str, dates: set[datetime.date], filename: str) -> None:
     if not dates:
         return
-    payload = [{"acct_id": acct_id, "import_date": d.isoformat()} for d in dates]
+    payload = [{
+        "acct_id": acct_id,
+        "import_date": d.isoformat(),
+        "filename": filename
+    } for d in dates]
     supabase.table("import_log").upsert(payload).execute()
+
+def get_import_logs() -> pd.DataFrame:
+    resp = supabase.table("import_log").select("*").execute()
+    return pd.DataFrame(resp.data or [])
+
+def delete_file_records(filename: str) -> None:
+    supabase.table("transactions").delete().eq("filename", filename).execute()
+    supabase.table("import_log").delete().eq("filename", filename).execute()
+    get_transactions.clear()
+    get_import_logs.clear()
 # -----------------------------------------------------------------------------
 
 #testesdfdf

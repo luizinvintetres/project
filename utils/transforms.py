@@ -27,22 +27,13 @@ def clean_statement(df_raw: pd.DataFrame) -> pd.DataFrame:
 
 from services import supabase_client as db
 
-def filter_already_imported(df: pd.DataFrame, acct_id: str) -> pd.DataFrame:
-    """
-    Remove do DataFrame as linhas com datas já registradas em import_log para a conta.
-    Registra as novas datas no log após o filtro.
-    """
-    # Garante que a coluna date é do tipo datetime.date
+def filter_already_imported_by_file(df: pd.DataFrame, acct_id: str, filename: str) -> pd.DataFrame:
     df["date"] = pd.to_datetime(df["date"]).dt.date
 
-    # Datas já importadas
     imported = db.get_imported_dates(acct_id)
-
-    # Filtra
     df_new = df[~df["date"].isin(imported)]
 
-    # Atualiza log
     if not df_new.empty:
-        db.add_import_log(acct_id, set(df_new["date"]))
-
+        db.add_import_log(acct_id, set(df_new["date"]), filename)
     return df_new
+    
