@@ -42,8 +42,11 @@ def render() -> None:
 
     # Filtros
     sel_fund = st.multiselect("Fundos", sorted(df["fund"].dropna().unique()))
-    if sel_fund:
-        df = df[df["fund"].isin(sel_fund)]
+    if not sel_fund:
+        st.info("Selecione ao menos um fundo para visualizar os dados.")
+        return
+
+    df = df[df["fund"].isin(sel_fund)]
 
     sel_acct = st.multiselect("Contas", sorted(df["account"].dropna().unique()))
     if sel_acct:
@@ -70,14 +73,14 @@ def render() -> None:
         .sort_values("date")
     )
 
-    # Gráfico de barras coloridas (positivo = azul, negativo = vermelho)
+    # Gráfico
     chart = alt.Chart(df_daily).mark_bar().encode(
         x=alt.X("date:T", title="Data"),
         y=alt.Y("amount:Q", title="Valor"),
         color=alt.condition(
             "datum.amount >= 0",
-            alt.value("steelblue"),  # Entradas
-            alt.value("crimson")     # Saídas
+            alt.value("steelblue"),
+            alt.value("crimson")
         ),
         tooltip=["date:T", "amount:Q"]
     ).properties(height=300)
