@@ -7,9 +7,9 @@ def read(file) -> pd.DataFrame:
     # Renomeia colunas com base na estrutura identificada
     df = df.rename(columns={
         df.columns[4]: "date",
-        df.columns[10]: "agencia",
+        df.columns[9]: "agencia",
         df.columns[8]: "amount",
-        df.columns[7]: "nature",
+        df.columns[6]: "nature",
         df.columns[14]: "nome_contraparte",
         df.columns[0]: "conta_corrente"
     })
