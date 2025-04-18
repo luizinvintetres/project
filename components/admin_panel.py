@@ -78,17 +78,17 @@ def render() -> None:
             except Exception as e:
                 st.error(f"Erro ao importar extrato: {e}")
 
-st.divider()
-st.subheader("🧾 Arquivos importados")
+    st.divider()
+    st.subheader("🧾 Arquivos importados")
 
-logs = db.get_import_logs()
-if logs.empty:
-    st.info("Nenhum arquivo foi importado ainda.")
-else:
-    filenames = sorted(logs["filename"].dropna().unique())
-    for f in filenames:
-        col1, col2 = st.columns([6, 1])
-        col1.write(f)
-        if col2.button("❌", key=f"del_{f}"):
-            db.delete_file_records(f)
-            st.success(f"Registros do arquivo '{f}' apagados.")
+    logs = db.get_import_logs()
+    if logs.empty:
+        st.info("Nenhum arquivo foi importado ainda.")
+    else:
+        filenames = sorted(logs["filename"].dropna().unique())
+        for f in filenames:
+            col1, col2 = st.columns([6, 1])
+            col1.write(f)
+            if col2.button("❌", key=f"del_{f}"):
+                db.delete_file_records(f)
+                st.success(f"Registros do arquivo '{f}' apagados.")
