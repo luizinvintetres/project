@@ -72,9 +72,11 @@ def add_import_log(acct_id: str, dates: set[datetime.date], filename: str) -> No
     } for d in dates]
     supabase.table("import_log").upsert(payload).execute()
 
+@st.cache_data(show_spinner=False)
 def get_import_logs() -> pd.DataFrame:
     resp = supabase.table("import_log").select("*").execute()
     return pd.DataFrame(resp.data or [])
+
 
 def delete_file_records(filename: str) -> None:
     supabase.table("transactions").delete().eq("filename", filename).execute()
