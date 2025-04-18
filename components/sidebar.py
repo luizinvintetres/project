@@ -105,6 +105,13 @@ def show_sidebar() -> str:
         # 🖼️ Logo no topo
         st.image("static/plgn_logo.png", width=180)  # ajuste o caminho conforme necessário
 
-        st.markdown("## Navegação")
+        st.markdown(
+    f"""
+    <div style="background-color:#0e1117;padding:10px;border-radius:10px;text-align:center">
+        <img src="static/poligono-logo.png" width="180">
+    </div>
+    """,
+    unsafe_allow_html=True
+    )
         page = st.radio("", ["Dashboard", "Relatório Semanal", "Administração"])
         return page
