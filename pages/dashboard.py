@@ -18,11 +18,15 @@ def render() -> None:
     st.header("📊 Dashboard Geral")
 
     tx = db.get_transactions()
+    if tx.empty:
+        st.info("Nenhuma transação disponível.")
+        return
+
     acc = db.get_accounts()[["acct_id", "nickname", "fund_id"]]
     funds = db.get_funds()[["fund_id", "name"]]
 
     if acc.empty or funds.empty:
-        st.warning("Cadastre fundos e contas antes de visualizar o dashboard.")
+        st.warning("Cadastre contas e fundos antes de prosseguir.")
         return
 
     df = (
@@ -30,61 +34,52 @@ def render() -> None:
         .merge(acc, on="acct_id", how="left")
         .merge(funds, on="fund_id", how="left")
         .rename(columns={"nickname": "account", "name": "fund"})
-    ) if not tx.empty else pd.DataFrame(columns=["date", "account", "fund", "description", "amount"])
+    )
 
-    # Filtros - mostrar todos os fundos disponíveis, mesmo sem transações
-    all_funds = sorted(funds["name"].dropna().unique())
-    sel_fund = st.multiselect("Fundos", all_funds)
-
+    sel_fund = st.multiselect("Fundos", sorted(df["fund"].dropna().unique()))
     if not sel_fund:
         st.info("Selecione ao menos um fundo para visualizar os dados.")
         return
 
     df = df[df["fund"].isin(sel_fund)]
 
-    if df.empty:
-        st.warning("Nenhuma transação encontrada para os fundos selecionados.")
-        return
-
     sel_acct = st.multiselect("Contas", sorted(df["account"].dropna().unique()))
     if sel_acct:
         df = df[df["account"].isin(sel_acct)]
 
-    # Slider de datas
-    min_date, max_date = df["date"].min().date(), df["date"].max().date()
+    if df.empty:
+        st.warning("Nenhuma transação encontrada para os filtros aplicados.")
+        return
+
+    # Filtro por período (slider)
+    min_date, max_date = df["date"].min(), df["date"].max()
     start, end = st.slider(
         "Período de Visualização",
-        min_value=min_date,
-        max_value=max_date,
-        value=(min_date, max_date)
+        min_value=min_date.date(),
+        max_value=max_date.date(),
+        value=(min_date.date(), max_date.date())
     )
     df = df[(df["date"].dt.date >= start) & (df["date"].dt.date <= end)]
 
     if df.empty:
-        st.warning("Nenhuma transação no período selecionado.")
+        st.warning("Nenhuma transação no intervalo selecionado.")
         return
 
-    # Métricas
     _metrics(df)
 
-    # Agrupar por data e tipo
-    df["tipo"] = df["amount"].apply(lambda x: "Entrada" if x > 0 else "Saída")
-    df_grouped = (
-        df.groupby([df["date"].dt.date, "tipo"])["amount"]
-        .sum()
-        .reset_index()
-        .rename(columns={"date": "Data", "amount": "Valor", "tipo": "Tipo"})
-    )
+    # Prepara dados para gráfico de barras
+    df_bar = df.copy()
+    df_bar["type"] = df_bar["amount"].apply(lambda x: "Entrada" if x > 0 else "Saída")
+    df_bar["amount"] = df_bar["amount"].abs()
 
-    # Gráfico de barras
-    chart = alt.Chart(df_grouped).mark_bar().encode(
-        x=alt.X("Data:T", title="Data"),
-        y=alt.Y("Valor:Q", title="Valor"),
-        color=alt.Color("Tipo:N", scale=alt.Scale(domain=["Entrada", "Saída"], range=["steelblue", "crimson"])),
-        tooltip=["Data:T", "Tipo:N", "Valor:Q"]
-    ).properties(height=350)
+    chart = alt.Chart(df_bar).mark_bar().encode(
+        x=alt.X("date:T", title="Data"),
+        y=alt.Y("amount:Q", title="Valor"),
+        color=alt.Color("type:N", scale=alt.Scale(domain=["Entrada", "Saída"], range=["steelblue", "crimson"])),
+        column=alt.Column("type:N", header=alt.Header(labelOrient="bottom")),
+        tooltip=["date:T", "amount:Q", "type:N"]
+    ).properties(height=300).configure_axisX(labelAngle=-45)
 
     st.altair_chart(chart, use_container_width=True)
 
-    # Tabela
-    st.dataframe(df[["date", "fund", "account", "description", "amount"]].sort_values("date"))
+    st.dataframe(df[["date", "fund", "account", "description", "amount"]])
