@@ -21,8 +21,8 @@ def render() -> None:
     acc = db.get_accounts()[["acct_id", "nickname", "fund_id"]]
     funds = db.get_funds()[["fund_id", "name"]]
 
-    if tx.empty or acc.empty or funds.empty:
-        st.info("Cadastre fundos, contas e transações para visualizar o dashboard.")
+    if acc.empty or funds.empty:
+        st.warning("Cadastre fundos e contas antes de visualizar o dashboard.")
         return
 
     df = (
@@ -30,19 +30,21 @@ def render() -> None:
         .merge(acc, on="acct_id", how="left")
         .merge(funds, on="fund_id", how="left")
         .rename(columns={"nickname": "account", "name": "fund"})
-    )
+    ) if not tx.empty else pd.DataFrame(columns=["date", "account", "fund", "description", "amount"])
 
-    if "fund" not in df.columns or "account" not in df.columns:
-        st.warning("Erro ao preparar os dados: verifique se há contas e fundos corretamente relacionados.")
-        return
+    # Filtros - mostrar todos os fundos disponíveis, mesmo sem transações
+    all_funds = sorted(funds["name"].dropna().unique())
+    sel_fund = st.multiselect("Fundos", all_funds)
 
-    # Filtros
-    sel_fund = st.multiselect("Fundos", sorted(df["fund"].dropna().unique()))
     if not sel_fund:
         st.info("Selecione ao menos um fundo para visualizar os dados.")
         return
 
     df = df[df["fund"].isin(sel_fund)]
+
+    if df.empty:
+        st.warning("Nenhuma transação encontrada para os fundos selecionados.")
+        return
 
     sel_acct = st.multiselect("Contas", sorted(df["account"].dropna().unique()))
     if sel_acct:
@@ -59,13 +61,13 @@ def render() -> None:
     df = df[(df["date"].dt.date >= start) & (df["date"].dt.date <= end)]
 
     if df.empty:
-        st.warning("Nenhuma transação encontrada no período selecionado.")
+        st.warning("Nenhuma transação no período selecionado.")
         return
 
     # Métricas
     _metrics(df)
 
-    # Agrupar por data e tipo de transação
+    # Agrupar por data e tipo
     df["tipo"] = df["amount"].apply(lambda x: "Entrada" if x > 0 else "Saída")
     df_grouped = (
         df.groupby([df["date"].dt.date, "tipo"])["amount"]
@@ -74,7 +76,7 @@ def render() -> None:
         .rename(columns={"date": "Data", "amount": "Valor", "tipo": "Tipo"})
     )
 
-    # Gráfico de barras lado a lado
+    # Gráfico de barras
     chart = alt.Chart(df_grouped).mark_bar().encode(
         x=alt.X("Data:T", title="Data"),
         y=alt.Y("Valor:Q", title="Valor"),
@@ -86,4 +88,3 @@ def render() -> None:
 
     # Tabela
     st.dataframe(df[["date", "fund", "account", "description", "amount"]].sort_values("date"))
-    
