@@ -81,6 +81,7 @@ def render() -> None:
     st.divider()
     st.subheader("🧾 Arquivos importados")
 
+    db.get_import_logs.clear()
     logs = db.get_import_logs()
     if logs.empty:
         st.info("Nenhum arquivo foi importado ainda.")
