@@ -30,7 +30,7 @@ def render() -> None:
         .rename(columns={"nickname": "account", "name": "fund"})
     )
 
-    # Filtros interativos
+    # Filtros
     sel_fund = st.multiselect("Fundos", sorted(df["fund"].unique()))
     if sel_fund:
         df = df[df["fund"].isin(sel_fund)]
@@ -38,32 +38,40 @@ def render() -> None:
     if sel_acct:
         df = df[df["account"].isin(sel_acct)]
 
-    # Controlador de intervalo de datas
-    min_date, max_date = df["date"].min(), df["date"].max()
+    # Slider de datas
+    min_date, max_date = df["date"].min().date(), df["date"].max().date()
     start, end = st.slider(
         "Período de Visualização",
-        min_value=min_date.date(),
-        max_value=max_date.date(),
-        value=(min_date.date(), max_date.date())
+        min_value=min_date,
+        max_value=max_date,
+        value=(min_date, max_date)
     )
     df = df[(df["date"].dt.date >= start) & (df["date"].dt.date <= end)]
 
+    # Métricas
     _metrics(df)
 
-    # Gráfico de barras para Entradas e Saídas
-    df_bar = df.copy()
-    df_bar["type"] = df_bar["amount"].apply(lambda x: "Entrada" if x > 0 else "Saída")
-    df_bar["amount"] = df_bar["amount"].abs()
+    # Agrupar por data e somar entradas/saídas
+    df_daily = (
+        df.groupby("date")["amount"]
+        .sum()
+        .reset_index()
+        .sort_values("date")
+    )
 
-    chart = alt.Chart(df_bar).mark_bar().encode(
+    # Gráfico de barras empilhadas (positivas e negativas)
+    chart = alt.Chart(df_daily).mark_bar().encode(
         x=alt.X("date:T", title="Data"),
         y=alt.Y("amount:Q", title="Valor"),
-        color=alt.Color("type:N", scale=alt.Scale(domain=["Entrada", "Saída"], range=["steelblue", "crimson"])),
-        column=alt.Column("type:N", header=alt.Header(labelOrient="bottom")),
-        tooltip=["date:T", "amount:Q", "type:N"]
-    ).properties(height=300).configure_axisX(labelAngle=-45)
+        color=alt.condition(
+            "datum.amount >= 0",
+            alt.value("steelblue"),  # Entradas
+            alt.value("crimson")     # Saídas
+        ),
+        tooltip=["date:T", "amount:Q"]
+    ).properties(height=300)
 
     st.altair_chart(chart, use_container_width=True)
 
-    # Tabela de transações
+    # Tabela
     st.dataframe(df[["date", "fund", "account", "description", "amount"]])
