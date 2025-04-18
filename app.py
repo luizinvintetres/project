@@ -1,18 +1,20 @@
 """
 Ponto de entrada da aplicação Streamlit
+<<<<<<< HEAD
 ---------------------------------------
 
 – Navegação na sidebar
 – Cada página é um módulo separado
 – Administração agora é uma tela própria (não um expander)
+=======
+>>>>>>> parent of 7aa2241 (adicionando)
 """
-from __future__ import annotations
-
 import streamlit as st
 from components.sidebar import show_sidebar
 from pages import dashboard, relatorio_semanal
 from components import admin_panel
 
+<<<<<<< HEAD
 # ----------------------------------------------------------------------------- #
 # Configuração geral do app
 # ----------------------------------------------------------------------------- #
@@ -45,3 +47,14 @@ elif page == "Administração":
 
 else:
     st.warning("Página não encontrada.")
+=======
+st.set_page_config(page_title="Bank Statement Manager", layout="wide", page_icon="💼")
+st.title("🏦 Bank Statement Manager")
+
+page = show_sidebar()
+
+if page == "Dashboard":
+    dashboard.render()
+else:
+    relatorio_semanal.render()
+>>>>>>> parent of 7aa2241 (adicionando)
