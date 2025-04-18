@@ -1,14 +1,11 @@
 # components/sidebar.py
-from __future__ import annotations
 import streamlit as st
 
 def show_sidebar() -> str:
-    st.sidebar.title("app")
+    """Sidebar enxuta com menu de navegação."""
     page = st.sidebar.radio(
-        label="",
+        label="Navegação",
         options=["Dashboard", "Relatório Semanal", "Administração"],
         index=0,
-        label_visibility="collapsed",
     )
-    st.sidebar.markdown("---")
     return page
