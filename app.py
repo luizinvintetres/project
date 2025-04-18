@@ -1,20 +1,17 @@
 """
 Ponto de entrada da aplicação Streamlit
-<<<<<<< HEAD
 ---------------------------------------
 
 – Navegação na sidebar
 – Cada página é um módulo separado
 – Administração agora é uma tela própria (não um expander)
-=======
->>>>>>> parent of 7aa2241 (adicionando)
 """
 import streamlit as st
 from components.sidebar import show_sidebar
 from pages import dashboard, relatorio_semanal
 from components import admin_panel
 
-<<<<<<< HEAD
+#<<<<<<< HEAD
 # ----------------------------------------------------------------------------- #
 # Configuração geral do app
 # ----------------------------------------------------------------------------- #
@@ -57,4 +54,4 @@ if page == "Dashboard":
     dashboard.render()
 else:
     relatorio_semanal.render()
->>>>>>> parent of 7aa2241 (adicionando)
+
