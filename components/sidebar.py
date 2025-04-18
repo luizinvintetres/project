@@ -101,10 +101,10 @@ def _form_upload() -> None:
 # Função que compõe a Sidebar inteira e devolve a página selecionada
 # -----------------------------------------------------------------------------
 def show_sidebar() -> str:
-    """Sidebar enxuta com menu de navegação."""
-    page = st.sidebar.radio(
-        label="Navegação",
-        options=["Dashboard", "Relatório Semanal", "Administração"],
-        index=0,
-    )
-    return page
+    with st.sidebar:
+        # 🖼️ Logo no topo
+        st.image("static/plgn_logo.png", width=180)  # ajuste o caminho conforme necessário
+
+        st.markdown("## Navegação")
+        page = st.radio("", ["Dashboard", "Relatório Semanal", "Administração"])
+        return page
