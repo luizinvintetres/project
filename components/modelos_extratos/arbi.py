@@ -7,10 +7,17 @@ def read(file) -> pd.DataFrame:
     # Renomeia colunas com base na estrutura identificada
     df = df.rename(columns={
         df.columns[4]: "date",
-        df.columns[10]: "description",
+        df.columns[10]: "nome_contraparte",
         df.columns[8]: "amount",
-        df.columns[7]: "nature"
+        df.columns[7]: "nature",
+        df.columns[2]: "conta_corrente",
+        df.columns[1]: "agencia"
     })
+
+    # Cria a nova descrição no formato: "Agência - Conta Corrente - Nome Contraparte"
+    df["description"] = df["agencia"].astype(str).str.strip() + " - " + \
+                        df["conta_corrente"].astype(str).str.strip() + " - " + \
+                        df["nome_contraparte"].astype(str).str.strip()
 
     # Mantém apenas colunas necessárias
     df = df[["date", "description", "amount", "nature"]]
