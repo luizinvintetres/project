@@ -1,11 +1,10 @@
-# components/modelos_extratos/arbi.py
 import pandas as pd
 
 def read(file) -> pd.DataFrame:
-    # Carrega com cabeçalho na linha 7
+    # Lê a planilha com o cabeçalho na linha 7 (linha 8 visualmente)
     df = pd.read_excel(file, header=7)
 
-    # Renomear colunas úteis
+    # Renomeia colunas com base na estrutura identificada
     df = df.rename(columns={
         df.columns[4]: "date",
         df.columns[10]: "description",
@@ -13,24 +12,32 @@ def read(file) -> pd.DataFrame:
         df.columns[7]: "nature"
     })
 
-    # Limpeza
+    # Mantém apenas colunas necessárias
     df = df[["date", "description", "amount", "nature"]]
-    df["date"] = pd.to_datetime(df["date"], dayfirst=True, errors="coerce")
+
+    # Converte valores numéricos: R$ 10.000,50 -> 10000.50
     df["amount"] = (
         df["amount"]
         .astype(str)
         .str.replace(".", "", regex=False)
         .str.replace(",", ".", regex=False)
-        .astype(float)
     )
 
-    # Débitos serão negativos
+    # Filtra apenas linhas com valor numérico válido
+    df = df[df["amount"].str.replace(".", "", regex=False).str.isnumeric()]
+    df["amount"] = df["amount"].astype(float)
+
+    # Ajusta débitos para valores negativos
     df["amount"] = df.apply(
-        lambda row: -row["amount"] if row["nature"].strip().upper() == "D" else row["amount"],
+        lambda row: -row["amount"] if str(row["nature"]).strip().upper() == "D" else row["amount"],
         axis=1
     )
 
-    # Campo de liquidação inferido por palavra-chave
+    # Converte data
+    df["date"] = pd.to_datetime(df["date"], dayfirst=True, errors="coerce")
+
+    # Inferir se é liquidação pela descrição
     df["liquidation"] = df["description"].str.contains("liquid", case=False, na=False)
 
-    return df.drop(columns=["nature"]).dropna(subset=["date", "amount"])
+    # Remove colunas auxiliares e linhas incompletas
+    return df.drop(columns=["nature"]).dropna(subset=["date", "amount", "description"])
