@@ -44,7 +44,7 @@ elif page == "Administração":
 
 else:
     st.warning("Página não encontrada.")
-=======
+
 st.set_page_config(page_title="Bank Statement Manager", layout="wide", page_icon="💼")
 st.title("🏦 Bank Statement Manager")
 
