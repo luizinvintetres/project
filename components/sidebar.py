@@ -1,7 +1,3 @@
-<<<<<<< HEAD
-# components/sidebar.py
-import streamlit as st
-=======
 """
 Sidebar com:
 1. Cadastro de fundos/contas
@@ -9,7 +5,6 @@ Sidebar com:
 3. Navegação entre páginas
 """
 from __future__ import annotations
->>>>>>> parent of 7aa2241 (adicionando)
 
 import streamlit as st
 import pandas as pd
@@ -106,7 +101,6 @@ def _form_upload() -> None:
 # Função que compõe a Sidebar inteira e devolve a página selecionada
 # -----------------------------------------------------------------------------
 def show_sidebar() -> str:
-<<<<<<< HEAD
     """Sidebar enxuta com menu de navegação."""
     page = st.sidebar.radio(
         label="Navegação",
@@ -114,10 +108,3 @@ def show_sidebar() -> str:
         index=0,
     )
     return page
-=======
-    st.sidebar.header("Administração")
-    _form_fund()
-    _form_account()
-    _form_upload()
-    return st.sidebar.radio("Navegação", ["Dashboard", "Relatório Semanal"])
->>>>>>> parent of 7aa2241 (adicionando)
