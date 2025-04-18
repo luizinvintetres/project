@@ -11,7 +11,7 @@ def render() -> None:
     fund_cnpj = st.text_input("CNPJ", key="fund_cnpj")
     fund_admin = st.text_input("Administrador", key="fund_admin")
     if st.button("Adicionar Fundo", key="add_fund") and fund_name:
-        db.insert_fund(fund_name, fund_cnpj, fund_admin)
+        db.insert_fund({"name": fund_name, "cnpj": fund_cnpj, "administrator": fund_admin})
         st.success("Fundo adicionado!")
 
     st.divider()
