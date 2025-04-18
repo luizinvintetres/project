@@ -45,9 +45,7 @@ def render() -> None:
         
         # NOVO: seleção do tipo de extrato
         model_options = {
-            "Bradesco": "bradesco",
-            "Itaú": "itau",
-            "Genérico CSV": "generic_csv"
+            "Arbi": "arbi"
         }
         sel_model = st.selectbox("Modelo de Extrato", list(model_options.keys()))
         file = st.file_uploader("Extrato", type=["csv", "xlsx", "xls"])
