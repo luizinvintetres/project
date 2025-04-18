@@ -111,4 +111,5 @@ def render() -> None:
     for col in currency_cols:
         display_df[col] = display_df[col].map(lambda x: f"R$ {x:,.2f}")
 
+    # Exibe a tabela já formatada como strings
     st.dataframe(display_df, use_container_width=True)
