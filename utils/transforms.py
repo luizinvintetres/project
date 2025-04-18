@@ -24,3 +24,25 @@ def clean_statement(df_raw: pd.DataFrame) -> pd.DataFrame:
     df["amount"] = pd.to_numeric(df["amount"], errors="coerce")
     df["liquidation"] = df["description"].str.contains("liquid", case=False, na=False)
     return df.dropna(subset=["date", "amount"])
+
+from services import supabase_client as db
+
+def filter_already_imported(df: pd.DataFrame, acct_id: str) -> pd.DataFrame:
+    """
+    Remove do DataFrame as linhas com datas já registradas em import_log para a conta.
+    Registra as novas datas no log após o filtro.
+    """
+    # Garante que a coluna date é do tipo datetime.date
+    df["date"] = pd.to_datetime(df["date"]).dt.date
+
+    # Datas já importadas
+    imported = db.get_imported_dates(acct_id)
+
+    # Filtra
+    df_new = df[~df["date"].isin(imported)]
+
+    # Atualiza log
+    if not df_new.empty:
+        db.add_import_log(acct_id, set(df_new["date"]))
+
+    return df_new
