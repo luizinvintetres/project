@@ -100,9 +100,11 @@ def _form_upload() -> None:
 # ----------------------------------------------------------------------------- 
 # Função que compõe a Sidebar inteira e devolve a página selecionada
 # -----------------------------------------------------------------------------
+from services.supabase_client import supabase
+
 def show_sidebar() -> str:
     with st.sidebar:
-        # — se o usuário já estiver logado, mostrar e botão de logout
+        # 1) Logout / usuário
         if "user" in st.session_state:
             st.write(f"👤 {st.session_state.user.email}")
             if st.button("Sair", key="logout_sidebar"):
@@ -110,8 +112,15 @@ def show_sidebar() -> str:
                 del st.session_state.user
                 st.rerun()
 
-
-        # logo e navegação
+        # 2) Logo e menu
         st.image("static/plgn_logo.png", width=240)
         st.markdown("## Navegação")
-        page = st.radio("", ["Dashboard", "Relatório Semanal", "Administração"])
+        page = st.radio("", ["Dashboard", "Relatório Semanal", "Administração"], key="menu_radio")
+
+        # 3) Formulários só para admin
+        if page == "Administração":
+            _form_fund()
+            _form_account()
+            _form_upload()
+
+    return page
