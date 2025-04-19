@@ -123,7 +123,7 @@ def render() -> None:
                         supabase.from_("transactions").insert(
                             {
                                 "acct_id": acct_opts[sel_acct],
-                                "date": row["date"].strftime("%Y-%m-%d"),
+                                "date": str(row["date"]),
                                 "description": row["description"],
                                 "amount": float(row["amount"]),
                                 "liquidation": bool(row["liquidation"]),
