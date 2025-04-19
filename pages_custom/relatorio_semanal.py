@@ -56,23 +56,21 @@ def _week_window(offset: int) -> tuple[date, date]:
 def render() -> None:
     st.header("🗓️ Relatório Semanal — Resumo por Fundo")
 
-    # Refresh button to clear caches
-    if st.button("🔄 Atualizar Dados", key="refresh_weekly"):
-        _load_joined_transactions.clear()
-        _load_joined_saldos.clear()
-        get_transactions.clear()
-        get_accounts.clear()
-        get_funds.clear()
-        get_saldos.clear()
-        return
+    # Limpa caches para garantir dados atualizados
+    _load_joined_transactions.clear()
+    _load_joined_saldos.clear()
+    get_transactions.clear()
+    get_accounts.clear()
+    get_funds.clear()
+    get_saldos.clear()
 
-    # Load joined transactions
+    # Carrega transações juntadas
     tx = _load_joined_transactions()
     if tx.empty:
         st.info("Sem transações para relatório.")
         return
 
-    # Week navigation
+    # Navegação de semanas
     if "week_offset" not in st.session_state:
         st.session_state.week_offset = 0
     cols = st.columns([1, 4, 1])
@@ -91,7 +89,7 @@ def render() -> None:
         f"</div>", unsafe_allow_html=True
     )
 
-    # Filter weekly transactions
+    # Filtra transações da semana
     df = tx.copy()
     df["date"] = pd.to_datetime(df["date"]).dt.date
     weekly = df[(df["date"] >= start) & (df["date"] <= end)]
@@ -99,13 +97,12 @@ def render() -> None:
         st.warning("Nenhuma transação nesse intervalo.")
         return
 
-    # Load joined saldos
+    # Carrega saldos juntados
     sal_df = _load_joined_saldos()
     sal_df = sal_df.copy()
     sal_df["date"] = pd.to_datetime(sal_df["date"]).dt.date
-    sal_period = sal_df[(sal_df["date"] >= start) & (sal_df["date"] <= end)]
-
-    # Opening balance per fund
+    
+    # Calcula saldo de abertura
     abertura = (
         sal_df[sal_df["date"] == start]
         .groupby("fund_id")["opening_balance"]
@@ -113,7 +110,7 @@ def render() -> None:
         .rename("Saldo de Abertura")
     )
 
-    # Weekly metrics
+    # Métricas da semana
     entradas = (
         weekly[weekly["amount"] > 0]
         .groupby("fund_id")["amount"].sum().rename("Entradas (7 d)")
@@ -127,7 +124,7 @@ def render() -> None:
         .groupby("fund_id")["amount"].sum().rename("Liquidações")
     )
 
-    # Consolidate
+    # Consolida resumo
     summary = pd.concat([abertura, entradas, saidas, liquida], axis=1).fillna(0)
     funds_all = get_funds()[["fund_id", "name"]]
     summary = (
@@ -137,7 +134,7 @@ def render() -> None:
         [["Nome do fundo", "Saldo de Abertura", "Entradas (7 d)", "Saídas (7 d)", "Liquidações"]]
     )
 
-    # Format
+    # Formata valores
     for col in ["Saldo de Abertura", "Entradas (7 d)", "Saídas (7 d)", "Liquidações"]:
         summary[col] = summary[col].map(lambda x: f"R$ {x:,.2f}")
 
