@@ -36,6 +36,18 @@ def get_transactions() -> pd.DataFrame:
         df["date"] = pd.to_datetime(df["date"])
     return df
 
+@st.cache_data(show_spinner=False)
+def get_saldos() -> pd.DataFrame:
+    """
+    Recupera saldos de abertura do banco.
+    Columns: acct_id, date (date), opening_balance (float), uploader_email
+    """
+    resp = supabase.table("saldos").select("*").execute()
+    df = pd.DataFrame(resp.data or [])
+    if not df.empty:
+        df["date"] = pd.to_datetime(df["date"])  # keep datetime for merging
+    return df
+
 # -----------------------------------------------------------------------------
 # Helpers de escrita (limpam caches)
 # -----------------------------------------------------------------------------
