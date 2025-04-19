@@ -15,19 +15,19 @@ from services.supabase_client import (
 # -----------------------------------------------------------------------------
 # Cached data loaders
 # -----------------------------------------------------------------------------
-@st.cache_data(show_spinner=False)
+@st.cache_data(ttl= 20,show_spinner=False)
 def _load_transactions() -> pd.DataFrame:
     return get_transactions()
 
-@st.cache_data(show_spinner=False)
+@st.cache_data(ttl= 20,show_spinner=False)
 def _load_accounts() -> pd.DataFrame:
     return get_accounts()[["acct_id", "nickname", "fund_id"]]
 
-@st.cache_data(show_spinner=False)
+@st.cache_data(ttl= 20,show_spinner=False)
 def _load_funds() -> pd.DataFrame:
     return get_funds()[["fund_id", "name"]]
 
-@st.cache_data(show_spinner=False)
+@st.cache_data(ttl= 20,show_spinner=False)
 def _load_saldos() -> pd.DataFrame:
     sal = get_saldos()
     if sal is not None and not sal.empty:
