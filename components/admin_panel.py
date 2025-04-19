@@ -212,88 +212,90 @@ def render() -> None:
             get_saldos.clear()
             st.success("Saldo adicionado manualmente.")
 
-        # 📜 Histórico de Inserções Manuais
-        # 📜 Histórico de Inserções Manuais
-        st.divider()
-        if st.button("📜 Histórico de Inserções Manuais"):
-            st.subheader("📜 Inserções Manuais Recentes")
+       # 📜 Histórico de Inserções Manuais
+    st.divider()
+    if st.button("📜 Histórico de Inserções Manuais"):
+        st.subheader("📜 Inserções Manuais Recentes")
 
-            # Carrega contas e fundos para referência
-            accounts = supabase.from_("accounts").select("acct_id,nickname,fund_id").execute().data or []
-            funds    = supabase.from_("funds").select("fund_id,name").execute().data or []
+        # Carrega contas e fundos para referência
+        accounts = supabase.from_("accounts").select("acct_id,nickname,fund_id").execute().data or []
+        funds    = supabase.from_("funds").select("fund_id,name").execute().data or []
 
-            acct_map = {a["acct_id"]: a["nickname"] for a in accounts}
-            fund_map = {f["fund_id"]: f["name"] for f in funds}
-            acct_to_fund = {a["acct_id"]: fund_map.get(a["fund_id"], "—") for a in accounts}
+        acct_map = {a["acct_id"]: a["nickname"] for a in accounts}
+        fund_map = {f["fund_id"]: f["name"] for f in funds}
+        acct_to_fund = {a["acct_id"]: fund_map.get(a["fund_id"], "—") for a in accounts}
 
-            # — Transações Manuais —
-            tx_hist = (
-                supabase
-                .from_("transactions")
-                .select("*")
-                .eq("uploader_email", user_email)
-                .is_("filename", "null")
-                .execute()
-                .data
-                or []
-            )
-            if tx_hist:
-                st.markdown("**Transações Manuais**")
-                for idx, row in enumerate(tx_hist):
-                    conta = acct_map.get(row["acct_id"], "—")
-                    fundo = acct_to_fund.get(row["acct_id"], "—")
-                    cols = st.columns([1.5, 3, 2.5, 2.5, 0.7])
-                    cols[0].write(f"📅 {row['date']}")
-                    cols[1].write(f"📝 {row['description']}")
-                    cols[2].write(f"🏦 {conta}")
-                    cols[3].write(f"📁 {fundo}")
-                    if cols[4].button("❌", key=f"del_tx_{idx}"):
+        # — Transações Manuais —
+        tx_hist = (
+            supabase
+            .from_("transactions")
+            .select("id, acct_id, date, description, amount, uploader_email")
+            .eq("uploader_email", user_email)
+            .is_("filename", "null")
+            .execute()
+            .data
+            or []
+        )
+        if tx_hist:
+            st.markdown("**Transações Manuais**")
+            for idx, row in enumerate(tx_hist):
+                conta = acct_map.get(row["acct_id"], "—")
+                fundo = acct_to_fund.get(row["acct_id"], "—")
+                cols = st.columns([1.5, 3, 2.5, 2.5, 0.7])
+                cols[0].write(f"📅 {row['date']}")
+                cols[1].write(f"📝 {row['description']}")
+                cols[2].write(f"🏦 {conta}")
+                cols[3].write(f"📁 {fundo}")
+                if cols[4].button("❌", key=f"del_tx_{row['id']}"):
+                    try:
                         supabase.from_("transactions") \
                             .delete() \
-                            .eq("acct_id", row["acct_id"]) \
-                            .eq("date", row["date"]) \
-                            .eq("description", row["description"]) \
-                            .eq("amount", row["amount"]) \
+                            .eq("id", row["id"]) \
                             .eq("uploader_email", user_email) \
                             .execute()
                         get_transactions.clear()
                         st.success("Transação removida.")
                         st.experimental_rerun()
-            else:
-                st.info("Nenhuma transação manual encontrada.")
+                    except Exception as e:
+                        st.error(f"Erro ao remover transação: {e}")
 
-            st.markdown("---")
+        else:
+            st.info("Nenhuma transação manual encontrada.")
 
-            # — Saldos Manuais —
-            sal_hist = (
-                supabase
-                .from_("saldos")
-                .select("*")
-                .eq("uploader_email", user_email)
-                .is_("filename", "null")
-                .execute()
-                .data
-                or []
-            )
-            if sal_hist:
-                st.markdown("**Saldos Manuais**")
-                for idx, row in enumerate(sal_hist):
-                    conta = acct_map.get(row["acct_id"], "—")
-                    fundo = acct_to_fund.get(row["acct_id"], "—")
-                    cols = st.columns([1.5, 2.5, 2.5, 2.5, 0.7])
-                    cols[0].write(f"📅 {row['date']}")
-                    cols[1].write(f"💼 R$ {row['opening_balance']:,.2f}")
-                    cols[2].write(f"🏦 {conta}")
-                    cols[3].write(f"📁 {fundo}")
-                    if cols[4].button("❌", key=f"del_sal_{idx}"):
+        st.markdown("---")
+
+        # — Saldos Manuais —
+        sal_hist = (
+            supabase
+            .from_("saldos")
+            .select("id, acct_id, date, opening_balance, uploader_email")
+            .eq("uploader_email", user_email)
+            .is_("filename", "null")
+            .execute()
+            .data
+            or []
+        )
+        if sal_hist:
+            st.markdown("**Saldos Manuais**")
+            for idx, row in enumerate(sal_hist):
+                conta = acct_map.get(row["acct_id"], "—")
+                fundo = acct_to_fund.get(row["acct_id"], "—")
+                cols = st.columns([1.5, 2.5, 2.5, 2.5, 0.7])
+                cols[0].write(f"📅 {row['date']}")
+                cols[1].write(f"💼 R$ {row['opening_balance']:,.2f}")
+                cols[2].write(f"🏦 {conta}")
+                cols[3].write(f"📁 {fundo}")
+                if cols[4].button("❌", key=f"del_sal_{row['id']}"):
+                    try:
                         supabase.from_("saldos") \
                             .delete() \
-                            .eq("acct_id", row["acct_id"]) \
-                            .eq("date", row["date"]) \
+                            .eq("id", row["id"]) \
                             .eq("uploader_email", user_email) \
                             .execute()
                         get_saldos.clear()
                         st.success("Saldo removido.")
                         st.experimental_rerun()
-            else:
-                st.info("Nenhum saldo manual encontrado.")
+                    except Exception as e:
+                        st.error(f"Erro ao remover saldo: {e}")
+        else:
+            st.info("Nenhum saldo manual encontrado.")
