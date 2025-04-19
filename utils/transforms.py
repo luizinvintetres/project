@@ -48,3 +48,41 @@ def filter_already_imported_by_file(
             uploader_email
         )
     return df_new
+
+
+from services.supabase_client import supabase
+
+def already_exists_set(acct_id: str) -> set[tuple]:
+    """
+    Retorna um conjunto de chaves (date, description, amount) já presentes
+    na tabela transactions para a conta informada.
+    """
+    rows = (
+        supabase
+        .from_("transactions")
+        .select("date,description,amount")
+        .eq("acct_id", acct_id)
+        .execute()
+        .data
+        or []
+    )
+    # Converte cada linha em tupla (date, desc, amount)
+    return {
+        (r["date"], r["description"], float(r["amount"]))
+        for r in rows
+    }
+
+def filter_new_transactions(df: pd.DataFrame, acct_id: str) -> pd.DataFrame:
+    """
+    Filtra do DataFrame somente as linhas que NÃO existem ainda em transactions.
+    """
+    df2 = df.copy()
+    # uniformiza a data para date (sem hora) no mesmo formato de strings do supabase
+    df2["date"] = pd.to_datetime(df2["date"]).dt.date.astype(str)
+    # obtém as tuplas já existentes
+    existing = already_exists_set(acct_id)
+    # monta a chave de cada linha
+    df2["key"] = list(zip(df2["date"], df2["description"], df2["amount"].astype(float)))
+    # filtra somente as novas
+    df_new = df2[~df2["key"].isin(existing)].drop(columns="key")
+    return df_new
