@@ -27,13 +27,20 @@ def _metrics(df: pd.DataFrame, start_date: date, saldos_df: pd.DataFrame) -> Non
 def render() -> None:
     st.header("📊 Dashboard Geral")
 
-    # Carrega transações
+    # Botão de atualização manual para invalidar cache e recarregar dados
+    if st.button("🔄 Atualizar Dados", key="refresh_dashboard"):
+        get_transactions.clear()
+        get_saldos.clear()
+        get_accounts.clear()
+        get_funds.clear()
+        return
+
+    # Carrega transações e demais dados
     tx = get_transactions()
     if tx.empty:
         st.info("Nenhuma transação disponível.")
         return
 
-    # Carrega contas, fundos e saldos
     acc = get_accounts()[["acct_id", "nickname", "fund_id"]]
     funds = get_funds()[["fund_id", "name"]]
     sal = get_saldos()
@@ -42,7 +49,7 @@ def render() -> None:
         return
     sal["date"] = pd.to_datetime(sal["date"]).dt.date
 
-    # Une dados para exibição
+    # Monta DataFrame principal
     df = (
         tx
         .merge(acc, on="acct_id", how="left")
@@ -88,7 +95,7 @@ def render() -> None:
         st.warning("Nenhuma transação no intervalo selecionado.")
         return
 
-    # Métricas gerais
+    # Métricas
     _metrics(df, start, sal_df)
 
     # Gráfico de barras por tipo
@@ -117,14 +124,14 @@ def render() -> None:
     )
     st.altair_chart(chart, use_container_width=True)
 
-    # Tabela de saldos de abertura
+    # Saldos de Abertura
     st.subheader("Saldos de Abertura")
     st.dataframe(
         sal_df[["date", "fund", "account", "opening_balance"]],
         use_container_width=True
     )
 
-    # Tabela de transações
+    # Transações
     st.subheader("Transações")
     st.dataframe(
         df[["date", "fund", "account", "description", "amount"]],
