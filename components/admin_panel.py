@@ -211,3 +211,60 @@ def render() -> None:
             # limpa cache para refletir imediatamente
             get_saldos.clear()
             st.success("Saldo adicionado manualmente.")
+
+# Histórico de Inserções Manuais
+st.divider()
+if st.button("📜 Histórico de Inserções Manuais"):
+    st.subheader("📜 Histórico de Inserções Manuais")
+
+    # — Transações Manuais do Usuário —
+    tx_hist = (
+        supabase
+        .from_("transactions")
+        .select("id,acct_id,date,description,amount,liquidation")
+        .eq("uploader_email", user_email)
+        .is_("filename", None)
+        .execute()
+        .data
+        or []
+    )
+    if tx_hist:
+        st.markdown("**Transações Manuais**")
+        for row in tx_hist:
+            cols = st.columns([1, 2, 2, 1, 1])
+            cols[0].write(row["date"])
+            cols[1].write(row["description"])
+            cols[2].write(f"R$ {row['amount']:,.2f}")
+            cols[3].write("Entrada" if row["amount"] > 0 else "Saída")
+            if cols[4].button("❌", key=f"del_manual_tx_{row['id']}"):
+                supabase.from_("transactions").delete().eq("id", row["id"]).execute()
+                get_transactions.clear()
+                st.experimental_rerun()
+    else:
+        st.info("Nenhuma transação manual cadastrada.")
+
+    st.markdown("---")
+
+    # — Saldos Manuais do Usuário —
+    sal_hist = (
+        supabase
+        .from_("saldos")
+        .select("id,acct_id,date,opening_balance")
+        .eq("uploader_email", user_email)
+        .is_("filename", None)
+        .execute()
+        .data
+        or []
+    )
+    if sal_hist:
+        st.markdown("**Saldos Manuais**")
+        for row in sal_hist:
+            cols = st.columns([1, 2, 1])
+            cols[0].write(row["date"])
+            cols[1].write(f"R$ {row['opening_balance']:,.2f}")
+            if cols[2].button("❌", key=f"del_manual_sal_{row['id']}"):
+                supabase.from_("saldos").delete().eq("id", row["id"]).execute()
+                get_saldos.clear()
+                st.experimental_rerun()
+    else:
+        st.info("Nenhum saldo manual cadastrado.")
