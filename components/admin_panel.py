@@ -213,6 +213,7 @@ def render() -> None:
             st.success("Saldo adicionado manualmente.")
 
         # 📜 Histórico de Inserções Manuais
+        # 📜 Histórico de Inserções Manuais
         st.divider()
         if st.button("📜 Histórico de Inserções Manuais"):
             st.subheader("📜 Inserções Manuais Recentes")
@@ -228,7 +229,7 @@ def render() -> None:
             # — Transações Manuais —
             tx_hist = (
                 supabase
-                .table("transactions")
+                .from_("transactions")
                 .select("*")
                 .eq("uploader_email", user_email)
                 .is_("filename", "null")
@@ -236,26 +237,24 @@ def render() -> None:
                 .data
                 or []
             )
-
             if tx_hist:
                 st.markdown("**Transações Manuais**")
                 for idx, row in enumerate(tx_hist):
                     conta = acct_map.get(row["acct_id"], "—")
                     fundo = acct_to_fund.get(row["acct_id"], "—")
-                    cols = st.columns([1.5, 2.5, 2, 2, 0.7])
+                    cols = st.columns([1.5, 3, 2.5, 2.5, 0.7])
                     cols[0].write(f"📅 {row['date']}")
                     cols[1].write(f"📝 {row['description']}")
                     cols[2].write(f"🏦 {conta}")
                     cols[3].write(f"📁 {fundo}")
                     if cols[4].button("❌", key=f"del_tx_{idx}"):
-                        supabase.table("transactions")\
-                            .delete()\
-                            .eq("acct_id", row["acct_id"])\
-                            .eq("date", row["date"])\
-                            .eq("description", row["description"])\
-                            .eq("amount", row["amount"])\
-                            .eq("uploader_email", user_email)\
-                            .is_("filename", "null")\
+                        supabase.from_("transactions") \
+                            .delete() \
+                            .eq("acct_id", row["acct_id"]) \
+                            .eq("date", row["date"]) \
+                            .eq("description", row["description"]) \
+                            .eq("amount", row["amount"]) \
+                            .eq("uploader_email", user_email) \
                             .execute()
                         get_transactions.clear()
                         st.success("Transação removida.")
@@ -268,7 +267,7 @@ def render() -> None:
             # — Saldos Manuais —
             sal_hist = (
                 supabase
-                .table("saldos")
+                .from_("saldos")
                 .select("*")
                 .eq("uploader_email", user_email)
                 .is_("filename", "null")
@@ -276,24 +275,22 @@ def render() -> None:
                 .data
                 or []
             )
-
             if sal_hist:
                 st.markdown("**Saldos Manuais**")
                 for idx, row in enumerate(sal_hist):
                     conta = acct_map.get(row["acct_id"], "—")
                     fundo = acct_to_fund.get(row["acct_id"], "—")
-                    cols = st.columns([1.7, 2.3, 2, 2, 0.7])
+                    cols = st.columns([1.5, 2.5, 2.5, 2.5, 0.7])
                     cols[0].write(f"📅 {row['date']}")
                     cols[1].write(f"💼 R$ {row['opening_balance']:,.2f}")
                     cols[2].write(f"🏦 {conta}")
                     cols[3].write(f"📁 {fundo}")
                     if cols[4].button("❌", key=f"del_sal_{idx}"):
-                        supabase.table("saldos")\
-                            .delete()\
-                            .eq("acct_id", row["acct_id"])\
-                            .eq("date", row["date"])\
-                            .eq("uploader_email", user_email)\
-                            .is_("filename", "null")\
+                        supabase.from_("saldos") \
+                            .delete() \
+                            .eq("acct_id", row["acct_id"]) \
+                            .eq("date", row["date"]) \
+                            .eq("uploader_email", user_email) \
                             .execute()
                         get_saldos.clear()
                         st.success("Saldo removido.")
