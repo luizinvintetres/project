@@ -55,15 +55,6 @@ def _week_window(offset: int) -> tuple[date, date]:
 # -----------------------------------------------------------------------------
 def render() -> None:
     st.header("🗓️ Relatório Semanal — Resumo por Fundo")
-
-    # Limpa caches para garantir dados atualizados
-    _load_joined_transactions.clear()
-    _load_joined_saldos.clear()
-    get_transactions.clear()
-    get_accounts.clear()
-    get_funds.clear()
-    get_saldos.clear()
-
     # Carrega transações juntadas
     tx = _load_joined_transactions()
     if tx.empty:
