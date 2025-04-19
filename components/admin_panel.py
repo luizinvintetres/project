@@ -221,22 +221,22 @@ def render() -> None:
             tx_hist = (
                 supabase
                 .from_("transactions")
-                .select("id,date,description,amount,liquidation")
-                .eq("uploader_email", user_email)
-                .is_("filename", "is.null")
+                .select("id,date,description,amount")
+                .eq("uploader_email", user_email)        # só as minhas
+                .is_("filename", "null")                 # somente inseridas manualmente
                 .execute()
                 .data
                 or []
             )
+
             if tx_hist:
                 st.markdown("**Transações Manuais**")
                 for row in tx_hist:
-                    cols = st.columns([1.5, 3, 2, 1, 0.5])
+                    cols = st.columns([1.7, 3, 2, 0.7])
                     cols[0].write(f"📅 {row['date']}")
                     cols[1].write(f"📝 {row['description']}")
                     cols[2].write(f"💰 R$ {row['amount']:,.2f}")
-                    cols[3].write("✅" if row["amount"] > 0 else "🔻")
-                    if cols[4].button("❌", key=f"del_manual_tx_{row['id']}"):
+                    if cols[3].button("❌", key=f"del_tx_{row['id']}"):
                         supabase.from_("transactions").delete().eq("id", row["id"]).execute()
                         get_transactions.clear()
                         st.success("Transação removida.")
@@ -252,18 +252,19 @@ def render() -> None:
                 .from_("saldos")
                 .select("id,date,opening_balance")
                 .eq("uploader_email", user_email)
-                .is_("filename", "is.null")
+                .is_("filename", "null")
                 .execute()
                 .data
                 or []
             )
+
             if sal_hist:
                 st.markdown("**Saldos Manuais**")
                 for row in sal_hist:
-                    cols = st.columns([2, 3, 0.5])
+                    cols = st.columns([2, 3, 0.7])
                     cols[0].write(f"📅 {row['date']}")
                     cols[1].write(f"💼 R$ {row['opening_balance']:,.2f}")
-                    if cols[2].button("❌", key=f"del_manual_sal_{row['id']}"):
+                    if cols[2].button("❌", key=f"del_sal_{row['id']}"):
                         supabase.from_("saldos").delete().eq("id", row["id"]).execute()
                         get_saldos.clear()
                         st.success("Saldo removido.")
