@@ -105,15 +105,14 @@ from services.supabase_client import supabase
 
 def show_sidebar() -> str:
     with st.sidebar:
-        # Logo
+        # Logo e título
         st.image("static/plgn_logo.png", width=240)
         st.markdown("## Navegação")
 
-        # Menu principal
-        page = st.radio(
-            label="", 
-            options=["Dashboard", "Relatório Semanal", "Administração"], 
-            key="menu_radio"
-        )
+        # Menu baseado em role
+        options = ["Dashboard", "Relatório Semanal"]
+        if st.session_state.get("role") == "admin":
+            options.append("Administração")
 
+        page = st.radio("", options, key="menu_radio")
     return page
