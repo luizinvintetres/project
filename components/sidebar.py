@@ -105,23 +105,15 @@ from services.supabase_client import supabase
 
 def show_sidebar() -> str:
     with st.sidebar:
-        # 1) Logout / usuário
-        if "user" in st.session_state:
-            st.write(f"👤 {st.session_state.user.email}")
-            if st.button("Sair", key="logout_sidebar"):
-                supabase.auth.sign_out()
-                del st.session_state.user
-                st.rerun()
-
-        # 2) Logo e menu
+        # Logo
         st.image("static/plgn_logo.png", width=240)
         st.markdown("## Navegação")
-        page = st.radio("", ["Dashboard", "Relatório Semanal", "Administração"], key="menu_radio")
 
-        # 3) Formulários só para admin
-        if page == "Administração":
-            _form_fund()
-            _form_account()
-            _form_upload()
+        # Menu principal
+        page = st.radio(
+            label="", 
+            options=["Dashboard", "Relatório Semanal", "Administração"], 
+            key="menu_radio"
+        )
 
-    return page 
+    return page
