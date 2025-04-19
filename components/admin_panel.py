@@ -217,17 +217,15 @@ def render() -> None:
         if st.button("📜 Histórico de Inserções Manuais"):
             st.subheader("📜 Inserções Manuais Recentes")
 
-            # ---------- dicionários de fundo e conta ----------
-            fund_dict = {
-                r["fund_id"]: r["name"]
-                for r in supabase.table("funds").select("fund_id,name").execute().data or []
-            }
-            acct_dict = {
-                r["acct_id"]: r["nickname"]
-                for r in supabase.table("accounts").select("acct_id,nickname").execute().data or []
-            }
+            # Carrega contas e fundos para referência
+            accounts = supabase.from_("accounts").select("acct_id,nickname,fund_id").execute().data or []
+            funds    = supabase.from_("funds").select("fund_id,name").execute().data or []
 
-            # ---------- Transações manuais ----------
+            acct_map = {a["acct_id"]: a["nickname"] for a in accounts}
+            fund_map = {f["fund_id"]: f["name"] for f in funds}
+            acct_to_fund = {a["acct_id"]: fund_map.get(a["fund_id"], "—") for a in accounts}
+
+            # — Transações Manuais —
             tx_hist = (
                 supabase
                 .table("transactions")
@@ -241,22 +239,22 @@ def render() -> None:
 
             if tx_hist:
                 st.markdown("**Transações Manuais**")
-                for i, row in enumerate(tx_hist):
-                    fund_name  = fund_dict.get(row["fund_id"], "—")
-                    acct_name  = acct_dict.get(row["acct_id"], "—")
-                    cols = st.columns([1.4, 2.2, 2.8, 2, 0.6])
+                for idx, row in enumerate(tx_hist):
+                    conta = acct_map.get(row["acct_id"], "—")
+                    fundo = acct_to_fund.get(row["acct_id"], "—")
+                    cols = st.columns([1.5, 2.5, 2, 2, 0.7])
                     cols[0].write(f"📅 {row['date']}")
-                    cols[1].write(f"🏦 {fund_name}")
-                    cols[2].write(f"💳 {acct_name}")
-                    cols[3].write(f"R$ {row['amount']:,.2f}")
-                    if cols[4].button("❌", key=f"del_tx_{i}"):
-                        # usa a mesma sintaxe sugerida
+                    cols[1].write(f"📝 {row['description']}")
+                    cols[2].write(f"🏦 {conta}")
+                    cols[3].write(f"📁 {fundo}")
+                    if cols[4].button("❌", key=f"del_tx_{idx}"):
                         supabase.table("transactions")\
                             .delete()\
                             .eq("acct_id", row["acct_id"])\
                             .eq("date", row["date"])\
                             .eq("description", row["description"])\
                             .eq("amount", row["amount"])\
+                            .eq("uploader_email", user_email)\
                             .is_("filename", "null")\
                             .execute()
                         get_transactions.clear()
@@ -267,7 +265,7 @@ def render() -> None:
 
             st.markdown("---")
 
-            # ---------- Saldos manuais ----------
+            # — Saldos Manuais —
             sal_hist = (
                 supabase
                 .table("saldos")
@@ -281,19 +279,20 @@ def render() -> None:
 
             if sal_hist:
                 st.markdown("**Saldos Manuais**")
-                for i, row in enumerate(sal_hist):
-                    fund_name = fund_dict.get(row["fund_id"], "—")
-                    acct_name = acct_dict.get(row["acct_id"], "—")
-                    cols = st.columns([1.4, 2.2, 2.8, 2, 0.6])
+                for idx, row in enumerate(sal_hist):
+                    conta = acct_map.get(row["acct_id"], "—")
+                    fundo = acct_to_fund.get(row["acct_id"], "—")
+                    cols = st.columns([1.7, 2.3, 2, 2, 0.7])
                     cols[0].write(f"📅 {row['date']}")
-                    cols[1].write(f"🏦 {fund_name}")
-                    cols[2].write(f"💳 {acct_name}")
-                    cols[3].write(f"R$ {row['opening_balance']:,.2f}")
-                    if cols[4].button("❌", key=f"del_sal_{i}"):
+                    cols[1].write(f"💼 R$ {row['opening_balance']:,.2f}")
+                    cols[2].write(f"🏦 {conta}")
+                    cols[3].write(f"📁 {fundo}")
+                    if cols[4].button("❌", key=f"del_sal_{idx}"):
                         supabase.table("saldos")\
                             .delete()\
                             .eq("acct_id", row["acct_id"])\
                             .eq("date", row["date"])\
+                            .eq("uploader_email", user_email)\
                             .is_("filename", "null")\
                             .execute()
                         get_saldos.clear()
