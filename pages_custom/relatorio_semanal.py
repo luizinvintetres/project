@@ -55,32 +55,37 @@ def _week_window(offset: int) -> tuple[date, date]:
 # -----------------------------------------------------------------------------
 def render() -> None:
     st.header("🗓️ Relatório Semanal — Resumo por Fundo")
-    # Carrega transações juntadas
-    tx = _load_joined_transactions()
-    if tx.empty:
-        st.info("Sem transações para relatório.")
-        return
 
-    # Navegação de semanas
+    # Inicializa estado da semana
     if "week_offset" not in st.session_state:
         st.session_state.week_offset = 0
+
+    # Navegação de semanas
     cols = st.columns([1, 4, 1])
     with cols[0]:
-        if st.button("◀", help="Semana anterior", key="prev_week"):
+        if st.button("◀", help="Semana anterior"):
             st.session_state.week_offset -= 1
-            return
+            st.rerun()
+
     start, end = _week_window(st.session_state.week_offset)
+
     with cols[2]:
-        if st.button("▶", disabled=(st.session_state.week_offset == 0), help="Próxima semana", key="next_week"):
+        if st.button("▶", disabled=(st.session_state.week_offset == 0), help="Próxima semana"):
             st.session_state.week_offset += 1
-            return
+            st.rerun()
+
     cols[1].markdown(
         f"<div style='text-align:center; font-weight:600;'>"
         f"{start.strftime('%d/%m/%Y')} ➜ {end.strftime('%d/%m/%Y')}"
         f"</div>", unsafe_allow_html=True
     )
 
-    # Filtra transações da semana
+    # Carrega transações juntadas
+    tx = _load_joined_transactions()
+    if tx.empty:
+        st.info("Sem transações para relatório.")
+        return
+
     df = tx.copy()
     df["date"] = pd.to_datetime(df["date"]).dt.date
     weekly = df[(df["date"] >= start) & (df["date"] <= end)]
@@ -92,7 +97,7 @@ def render() -> None:
     sal_df = _load_joined_saldos()
     sal_df = sal_df.copy()
     sal_df["date"] = pd.to_datetime(sal_df["date"]).dt.date
-    
+
     # Calcula saldo de abertura
     abertura = (
         sal_df[sal_df["date"] == start]
