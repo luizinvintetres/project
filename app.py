@@ -49,7 +49,8 @@ if "user" not in st.session_state:
 # 3) LOGOUT NA SIDEBAR
 # -----------------------------------------------------------------------------
 st.sidebar.write(f"👤 {st.session_state.user.email}")
-if st.sidebar.button("Sair"):
+# botão de logout com key única para evitar duplicação
+if st.sidebar.button("Sair", key="logout_app"):
     supabase.auth.sign_out()
     del st.session_state.user
     st.rerun()

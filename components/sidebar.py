@@ -105,10 +105,11 @@ def show_sidebar() -> str:
         # — se o usuário já estiver logado, mostrar e botão de logout
         if "user" in st.session_state:
             st.write(f"👤 {st.session_state.user.email}")
-            if st.button("Sair"):
-                db.supabase.auth.sign_out()
+            if st.button("Sair", key="logout_sidebar"):
+                supabase.auth.sign_out()
                 del st.session_state.user
-                st.experimental_rerun()
+                st.rerun()
+
 
         # logo e navegação
         st.image("static/plgn_logo.png", width=240)
