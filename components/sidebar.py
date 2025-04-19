@@ -100,6 +100,7 @@ def _form_upload() -> None:
 # ----------------------------------------------------------------------------- 
 # Função que compõe a Sidebar inteira e devolve a página selecionada
 # -----------------------------------------------------------------------------
+
 from services.supabase_client import supabase
 
 def show_sidebar() -> str:
@@ -123,4 +124,4 @@ def show_sidebar() -> str:
             _form_account()
             _form_upload()
 
-    return page
+    return page 
