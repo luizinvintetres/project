@@ -8,25 +8,32 @@ def read(file) -> Tuple[pd.DataFrame, pd.DataFrame]:
       - balances: colunas ['date','opening_balance']
 
     Os saldos de abertura são extraídos da coluna index 1 do arquivo bruto,
-    agrupados por dia (primeiro valor do dia).
+    convertidos para float, agrupados por dia (primeiro valor do dia).
     """
-    # Leitura bruta
+    # Leitura bruta do arquivo
     raw = pd.read_excel(file, header=7)
 
-    # Extrai saldos de abertura
-    # coluna 4 = data, coluna 1 = valor do saldo
+    # --- Extrai e limpa saldos de abertura ---
     date_series = pd.to_datetime(
         raw.iloc[:, 4], dayfirst=True, errors="coerce"
     ).dt.date
-    balance_series = raw.iloc[:, 1]
+    balance_raw = raw.iloc[:, 1].astype(str)
+    # Remove separadores de milhar e ajusta vírgula decimal
+    balance_clean = (
+        balance_raw
+        .str.replace(".", "", regex=False)
+        .str.replace(",", ".", regex=False)
+    )
+    # Filtra apenas valores numéricos válidos
+    mask_bal = balance_clean.str.replace(".", "", regex=False).str.isnumeric()
     df_balances = pd.DataFrame({
-        "date": date_series,
-        "opening_balance": balance_series
+        "date": date_series[mask_bal],
+        "opening_balance": balance_clean[mask_bal].astype(float)
     })
-    df_balances = df_balances.dropna(subset=["date", "opening_balance"])
+    # Agrupa por data e pega o primeiro saldo de cada dia
     df_balances = df_balances.groupby("date", as_index=False).first()
 
-    # Prepara DataFrame de transações
+    # --- Prepara transações ---
     df = raw.rename(columns={
         raw.columns[4]: "date",
         raw.columns[9]: "agencia",
@@ -35,7 +42,6 @@ def read(file) -> Tuple[pd.DataFrame, pd.DataFrame]:
         raw.columns[14]: "nome_contraparte",
         raw.columns[0]: "conta_corrente"
     })
-    # Descrição customizada
     df["description"] = (
         df["agencia"].astype(str).str.strip() + " - " +
         df["conta_corrente"].astype(str).str.strip() + " - " +
@@ -44,15 +50,16 @@ def read(file) -> Tuple[pd.DataFrame, pd.DataFrame]:
     df = df[["date", "description", "amount", "nature"]]
 
     # Converte valores para float (R$ 10.000,50 -> 10000.50)
-    df["amount"] = (
-        df["amount"].astype(str)
-           .str.replace(".", "", regex=False)
-           .str.replace(",", ".", regex=False)
+    amt_raw = df["amount"].astype(str)
+    amt_clean = (
+        amt_raw
+        .str.replace(".", "", regex=False)
+        .str.replace(",", ".", regex=False)
     )
-    df = df[df["amount"].str.replace(".", "", regex=False).str.isnumeric()]
-    df["amount"] = df["amount"].astype(float)
+    df = df[amt_clean.str.replace(".", "", regex=False).str.isnumeric()]
+    df["amount"] = amt_clean[amt_clean.str.replace(".", "", regex=False).str.isnumeric()].astype(float)
 
-    # Ajusta débitos para negativos
+    # Ajusta débitos para valores negativos
     df["amount"] = df.apply(
         lambda row: -row["amount"]
         if str(row["nature"]).strip().upper() == "D"
