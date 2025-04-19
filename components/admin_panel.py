@@ -161,62 +161,52 @@ def render() -> None:
                 st.success(f"Registros do arquivo '{f}' foram apagados.")
                 return
 
-    # 📝 Inserção Manual
-    st.divider()
-    st.subheader("📝 Inserção Manual")
-
     # — Transação Manual —
-    st.markdown("**Transação Manual**")
-    manual_date = st.date_input("Data", key="manual_tx_date")
+st.markdown("**Transação Manual**")
+manual_date = st.date_input("Data", key="manual_tx_date")
 
-    # Carrega fundos e contas do banco
-    funds = supabase.from_("funds").select("fund_id,name").execute().data or []
-    fund_options = {ROW["name"]: ROW["fund_id"] for ROW in funds}
-    manual_fund = st.selectbox("Fundo (Transação)", list(fund_options.keys()), key="manual_tx_fund")
+funds = supabase.from_("funds").select("fund_id,name").execute().data or []
+fund_options = {row["name"]: row["fund_id"] for row in funds}
+manual_fund = st.selectbox("Fundo (Transação)", list(fund_options.keys()), key="manual_tx_fund")
 
-    accounts = supabase.from_("accounts").select("acct_id,nickname").execute().data or []
-    acct_options = {ROW["nickname"]: ROW["acct_id"] for ROW in accounts}
-    manual_acct = st.selectbox("Conta (Transação)", list(acct_options.keys()), key="manual_tx_acct")
+accounts = supabase.from_("accounts").select("acct_id,nickname").execute().data or []
+acct_options = {row["nickname"]: row["acct_id"] for row in accounts}
+manual_acct = st.selectbox("Conta (Transação)", list(acct_options.keys()), key="manual_tx_acct")
 
-    manual_amount = st.text_input("Valor (use vírgula para decimal)", key="manual_tx_amount")
-    manual_desc   = st.text_input("Descrição", key="manual_tx_desc")
+manual_amount = st.text_input("Valor (use vírgula para decimal)", key="manual_tx_amount")
+manual_desc   = st.text_input("Descrição", key="manual_tx_desc")
 
-    if st.button("Adicionar Transação", key="manual_tx_add"):
-        val = float(manual_amount.replace(".", "").replace(",", "."))
-        insert_transaction({
-            "acct_id":       acct_options[manual_acct],
-            "date":          manual_date.isoformat(),
-            "description":   manual_desc,
-            "amount":        val,
-            "liquidation":   False,
-            "filename":      None,
-            "uploader_email": user_email,
-        })
-        st.success("Transação adicionada manualmente.")
+if st.button("Adicionar Transação", key="manual_tx_add"):
+    val = float(manual_amount.replace(".", "").replace(",", "."))
+    supabase.from_("transactions").insert({
+        "acct_id":       acct_options[manual_acct],
+        "date":          manual_date.isoformat(),
+        "description":   manual_desc,
+        "amount":        val,
+        "liquidation":   False,
+        "filename":      None,
+        "uploader_email": user_email,
+    }).execute()
+    # limpa cache para refletir imediatamente
+    get_transactions.clear()
+    st.success("Transação adicionada manualmente.")
 
-    st.markdown("---")
+# — Saldo Manual —
+st.markdown("**Saldo Manual**")
+manual_saldo_date   = st.date_input("Data", key="manual_saldo_date")
+manual_saldo_fund   = st.selectbox("Fundo (Saldo)", list(fund_options.keys()), key="manual_saldo_fund")
+manual_saldo_acct   = st.selectbox("Conta (Saldo)", list(acct_options.keys()), key="manual_saldo_acct")
+manual_saldo_amount = st.text_input("Valor (use vírgula para decimal)", key="manual_saldo_amount")
 
-    # — Saldo Manual —
-    st.markdown("**Saldo Manual**")
-    manual_saldo_date = st.date_input("Data", key="manual_saldo_date")
-
-    # Reusa a mesma lista de fundos e contas
-    manual_saldo_fund = st.selectbox("Fundo (Saldo)", list(fund_options.keys()), key="manual_saldo_fund")
-    manual_saldo_acct = st.selectbox("Conta (Saldo)", list(acct_options.keys()), key="manual_saldo_acct")
-
-    manual_saldo_amount = st.text_input("Valor (use vírgula para decimal)", key="manual_saldo_amount")
-
-    if st.button("Adicionar Saldo", key="manual_saldo_add"):
-        sbal = float(manual_saldo_amount.replace(".", "").replace(",", "."))
-        insert_saldo(
-            acct_options[manual_saldo_acct],
-            manual_saldo_date,
-            sbal,
-            filename=None,
-            uploader_email=user_email,
-        )
-        st.success("Saldo adicionado manualmente.")
-
-    st.divider()
-
-    # 📊 Relatórios
+if st.button("Adicionar Saldo", key="manual_saldo_add"):
+    sbal = float(manual_saldo_amount.replace(".", "").replace(",", "."))
+    supabase.from_("saldos").upsert([{
+        "acct_id":         acct_options[manual_saldo_acct],
+        "date":            manual_saldo_date.isoformat(),
+        "opening_balance": sbal,
+        "filename":        None,
+        "uploader_email":  user_email,
+    }]).execute()
+    # limpa cache para refletir imediatamente
+    get_saldos.clear()
+    st.success("Saldo adicionado manualmente.")
