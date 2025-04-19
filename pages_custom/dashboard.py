@@ -3,90 +3,127 @@ from __future__ import annotations
 import altair as alt
 import pandas as pd
 import streamlit as st
-from services import supabase_client as db
+from services.supabase_client import (
+    get_funds,
+    get_accounts,
+    get_transactions,
+    get_saldos,
+)
 
-def _metrics(df: pd.DataFrame) -> None:
-    col1, col2, col3 = st.columns(3)
+
+def _metrics(df: pd.DataFrame, start_date: date, saldos_df: pd.DataFrame) -> None:
+    col1, col2, col3, col4 = st.columns(4)
     total_in = df.loc[df["amount"] > 0, "amount"].sum()
     total_out = df.loc[df["amount"] < 0, "amount"].sum()
     net = total_in + total_out
     col1.metric("Entradas", f"R$ {total_in:,.2f}")
-    col2.metric("Saídas", f"R$ {total_out:,.2f}")
+    col2.metric("Saídas", f"R$ {abs(total_out):,.2f}")
     col3.metric("Saldo Líquido", f"R$ {net:,.2f}")
+    # Saldo de abertura na data inicial
+    obs = saldos_df.loc[saldos_df["date"] == start_date, "opening_balance"].sum()
+    col4.metric("Saldo Abertura", f"R$ {obs:,.2f}")
+
 
 def render() -> None:
     st.header("📊 Dashboard Geral")
-    tx = db.get_transactions()
+    user_email = st.session_state.user.email
+
+    # Carrega dados
+    tx = get_transactions()
     if tx.empty:
         st.info("Nenhuma transação disponível.")
         return
+    # Filtra apenas transações do usuário
+    tx = tx[tx.get("uploader_email") == user_email]
 
-    acc = db.get_accounts()[["acct_id", "nickname", "fund_id"]]
-    funds = db.get_funds()[["fund_id", "name"]]
-
-    if acc.empty or funds.empty:
-        st.warning("Você precisa cadastrar fundos e contas antes de visualizar o dashboard.")
+    acc = get_accounts()[["acct_id", "nickname", "fund_id"]]
+    funds = get_funds()[["fund_id", "name"]]
+    sal = get_saldos()
+    if sal is None:
+        st.warning("Tabela de saldos não disponível.")
         return
+    sal["date"] = pd.to_datetime(sal["date"]).dt.date
+    sal = sal[sal.get("uploader_email") == user_email]
 
+    # Monta DataFrame unificado
     df = (
         tx
         .merge(acc, on="acct_id", how="left")
         .merge(funds, on="fund_id", how="left")
         .rename(columns={"nickname": "account", "name": "fund"})
     )
+    sal_df = (
+        sal
+        .merge(acc, on="acct_id", how="left")
+        .merge(funds, on="fund_id", how="left")
+        .rename(columns={"nickname": "account", "name": "fund"})
+    )
 
-    if "fund" not in df.columns or "account" not in df.columns:
-        st.warning("Erro ao preparar os dados: verifique se há contas e fundos corretamente relacionados.")
-        return
-
-    # Filtros
+    # Filtros de fundo e conta
     sel_fund = st.multiselect("Fundos", sorted(df["fund"].dropna().unique()))
     if sel_fund:
         df = df[df["fund"].isin(sel_fund)]
+        sal_df = sal_df[sal_df["fund"].isin(sel_fund)]
 
     sel_acct = st.multiselect("Contas", sorted(df["account"].dropna().unique()))
     if sel_acct:
         df = df[df["account"].isin(sel_acct)]
+        sal_df = sal_df[sal_df["account"].isin(sel_acct)]
 
     if df.empty:
         st.warning("Nenhuma transação encontrada para os filtros aplicados.")
         return
 
-    # Filtro por período (slider)
-    min_date, max_date = df["date"].min(), df["date"].max()
+    # Filtro de período
+    df["date"] = pd.to_datetime(df["date"])
+    min_date, max_date = df["date"].min().date(), df["date"].max().date()
     start, end = st.slider(
         "Período de Visualização",
-        min_value=min_date.date(),
-        max_value=max_date.date(),
-        value=(min_date.date(), max_date.date())
+        min_value=min_date,
+        max_value=max_date,
+        value=(min_date, max_date),
+        format="YYYY-MM-DD"
     )
     df = df[(df["date"].dt.date >= start) & (df["date"].dt.date <= end)]
+    sal_df = sal_df[(sal_df["date"] >= start) & (sal_df["date"] <= end)]
 
     if df.empty:
         st.warning("Nenhuma transação no intervalo selecionado.")
         return
 
-    _metrics(df)
+    # Métricas gerais
+    _metrics(df, start, sal_df)
 
-    # Classificar entradas/saídas
+    # Gráfico de barras por tipo
     df["type"] = df["amount"].apply(lambda x: "Entrada" if x > 0 else "Saída")
-
-    # Agrupar por data e tipo
     df_daily = (
         df.groupby(["date", "type"])["amount"]
         .sum()
         .reset_index()
         .sort_values("date")
     )
-
-    # Gráfico de barras coloridas
-    chart = alt.Chart(df_daily).mark_bar().encode(
-        x=alt.X("date:T", title="Data"),
-        y=alt.Y("amount:Q", title="Valor"),
-        color=alt.Color("type:N", scale=alt.Scale(domain=["Entrada", "Saída"], range=["steelblue", "crimson"])),
-        tooltip=["date:T", "amount:Q", "type:N"]
-    ).properties(height=300).configure_axisX(labelAngle=-45)
-
+    chart = (
+        alt.Chart(df_daily)
+        .mark_bar()
+        .encode(
+            x=alt.X("date:T", title="Data"),
+            y=alt.Y("amount:Q", title="Valor"),
+            color=alt.Color(
+                "type:N",
+                scale=alt.Scale(domain=["Entrada", "Saída"], range=["steelblue", "crimson"]),
+                title="Tipo"
+            ),
+            tooltip=["date:T", "amount:Q", "type:N"]
+        )
+        .properties(height=300)
+        .configure_axisX(labelAngle=-45)
+    )
     st.altair_chart(chart, use_container_width=True)
 
+    # Tabela de saldos de abertura
+    st.subheader("Saldos de Abertura")
+    st.dataframe(sal_df[["date", "fund", "account", "opening_balance"]])
+
+    # Tabela de transações
+    st.subheader("Transações")
     st.dataframe(df[["date", "fund", "account", "description", "amount"]])
