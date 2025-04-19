@@ -21,14 +21,25 @@ def login():
     with st.form("login_form"):
         email = st.text_input("E‑mail")
         password = st.text_input("Senha", type="password")
-        if st.form_submit_button("Entrar"):
-            res = supabase.auth.sign_in(email=email, password=password)
-            user = getattr(res, "user", None)
+        submitted = st.form_submit_button("Entrar")
+        if submitted:
+            # Autenticação via Supabase Auth V2
+            resp = supabase.auth.sign_in_with_password({
+                "email": email,
+                "password": password,
+            })
+            user = resp.data.get("user") if resp.data else None
             if user:
                 st.session_state.user = user
                 st.experimental_rerun()
             else:
-                st.error("E‑mail ou senha inválidos")
+                # Exibe mensagem de erro retornada pelo Supabase ou genérica
+                msg = (
+                    resp.error.message
+                    if hasattr(resp, "error") and hasattr(resp.error, "message")
+                    else "E‑mail ou senha inválidos"
+                )
+                st.error(msg)
 
 # Se não estiver logado, mostra o login e interrompe o resto do script
 if "user" not in st.session_state:
