@@ -14,7 +14,7 @@ from services.supabase_client import (
 # -----------------------------------------------------------------------------
 # Helpers with cache
 # -----------------------------------------------------------------------------
-@st.cache_data(show_spinner=False)
+@st.cache_data(ttl=20,show_spinner=False)
 def _load_joined_transactions() -> pd.DataFrame:
     tx = get_transactions()
     if tx.empty:
@@ -26,8 +26,7 @@ def _load_joined_transactions() -> pd.DataFrame:
         .merge(acc, on="acct_id", how="left")
         .merge(funds, on="fund_id", how="left")
     )
-
-@st.cache_data(show_spinner=False)
+@st.cache_data(ttl=20,show_spinner=False)
 def _load_joined_saldos() -> pd.DataFrame:
     sal = get_saldos()
     if sal.empty:
