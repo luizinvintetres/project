@@ -21,8 +21,9 @@ def _load_joined_transactions() -> pd.DataFrame:
     acc = get_accounts()[["acct_id", "fund_id"]]
     funds = get_funds()[["fund_id", "name"]]
     return (
-        tx.merge(acc, on="acct_id", how="left")
-          .merge(funds, on="fund_id", how="left")
+        tx
+        .merge(acc, on="acct_id", how="left")
+        .merge(funds, on="fund_id", how="left")
     )
 
 
@@ -34,8 +35,9 @@ def _load_joined_saldos() -> pd.DataFrame:
     acc = get_accounts()[["acct_id", "fund_id"]]
     funds = get_funds()[["fund_id", "name"]]
     return (
-        sal.merge(acc, on="acct_id", how="left")
-           .merge(funds, on="fund_id", how="left")
+        sal
+        .merge(acc, on="acct_id", how="left")
+        .merge(funds, on="fund_id", how="left")
     )
 
 
@@ -49,18 +51,15 @@ def _week_window(offset: int) -> tuple[date, date]:
 
 
 def render() -> None:
-    st.header("🗓️ Relatório Semanal — Resumo por Fundo")
-    user_email = st.session_state.user.email
+    st.header("🗓️ Relatório Semanal — Resumo por Fundo")
 
+    # Carrega transações e checa
     tx = _load_joined_transactions()
-    # filtra pelo usuário
-    if "uploader_email" in tx.columns:
-        tx = tx[tx["uploader_email"] == user_email]
     if tx.empty:
         st.info("Sem transações para relatório.")
         return
 
-    # controle de semana via session_state
+    # Controle de navegação semanal
     if "week_offset" not in st.session_state:
         st.session_state.week_offset = 0
     cols = st.columns([1, 4, 1])
@@ -69,8 +68,7 @@ def render() -> None:
             st.session_state.week_offset -= 1
     start, end = _week_window(st.session_state.week_offset)
     with cols[2]:
-        disable_next = st.session_state.week_offset == 0
-        if st.button("▶", disabled=disable_next, help="Próxima semana"):
+        if st.button("▶", disabled=(st.session_state.week_offset == 0), help="Próxima semana"):
             st.session_state.week_offset += 1
     cols[1].markdown(
         f"<div style='text-align:center; font-weight:600;'>"
@@ -78,22 +76,21 @@ def render() -> None:
         f"</div>", unsafe_allow_html=True
     )
 
-    # filtra transações da semana
-    tx = tx.copy()
-    tx["date"] = pd.to_datetime(tx["date"]).dt.date
-    weekly = tx[(tx["date"] >= start) & (tx["date"] <= end)]
+    # Filtra transações da semana
+    df = tx.copy()
+    df["date"] = pd.to_datetime(df["date"]).dt.date
+    weekly = df[(df["date"] >= start) & (df["date"] <= end)]
     if weekly.empty:
         st.warning("Nenhuma transação nesse intervalo.")
         return
 
-    # carrega saldos e filtra usuário e período
+    # Carrega saldos e filtra período
     sal_df = _load_joined_saldos()
-    if "uploader_email" in sal_df.columns:
-        sal_df = sal_df[sal_df["uploader_email"] == user_email]
     sal_df = sal_df.copy()
     sal_df["date"] = pd.to_datetime(sal_df["date"]).dt.date
+    sal_period = sal_df[(sal_df["date"] >= start) & (sal_df["date"] <= end)]
 
-    # abertura via saldos na data de início
+    # Calcula saldo de abertura pelo saldo informado na tabela
     abertura = (
         sal_df[sal_df["date"] == start]
         .groupby("fund_id")["opening_balance"]
@@ -101,7 +98,7 @@ def render() -> None:
         .rename("Saldo de Abertura")
     )
 
-    # métricas semanais
+    # Métricas semanais por fundo
     entradas = (
         weekly[weekly["amount"] > 0]
         .groupby("fund_id")["amount"].sum().rename("Entradas (7 d)")
@@ -115,20 +112,17 @@ def render() -> None:
         .groupby("fund_id")["amount"].sum().rename("Liquidações")
     )
 
-    # concatena resumo
+    # Consolida resumo
     summary = pd.concat([abertura, entradas, saidas, liquida], axis=1).fillna(0)
     funds_all = get_funds()[["fund_id", "name"]]
     summary = (
-        summary
-        .reset_index()
+        summary.reset_index()
         .merge(funds_all, on="fund_id")
-        .rename(columns={
-            "name": "Nome do fundo"
-        })
+        .rename(columns={"name": "Nome do fundo"})
         [["Nome do fundo", "Saldo de Abertura", "Entradas (7 d)", "Saídas (7 d)", "Liquidações"]]
     )
 
-    # formata valores
+    # Formata valores
     for col in ["Saldo de Abertura", "Entradas (7 d)", "Saídas (7 d)", "Liquidações"]:
         summary[col] = summary[col].map(lambda x: f"R$ {x:,.2f}")
 
