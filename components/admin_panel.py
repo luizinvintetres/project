@@ -223,7 +223,7 @@ def render() -> None:
                 .from_("transactions")
                 .select("id,acct_id,date,description,amount,liquidation")
                 .eq("uploader_email", user_email)
-                .is_("filename", None)
+                .filter("filename", "is", "null")
                 .execute()
                 .data
                 or []
@@ -251,7 +251,7 @@ def render() -> None:
                 .from_("saldos")
                 .select("id,acct_id,date,opening_balance")
                 .eq("uploader_email", user_email)
-                .is_("filename", None)
+                .filter("filename", "is", "null")
                 .execute()
                 .data
                 or []
