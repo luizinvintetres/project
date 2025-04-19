@@ -102,9 +102,15 @@ def _form_upload() -> None:
 # -----------------------------------------------------------------------------
 def show_sidebar() -> str:
     with st.sidebar:
-        # 🖼️ Logo no topo
-        st.image("static/plgn_logo.png", width=240)  # ajuste o caminho conforme necessário
+        # — se o usuário já estiver logado, mostrar e botão de logout
+        if "user" in st.session_state:
+            st.write(f"👤 {st.session_state.user.email}")
+            if st.button("Sair"):
+                db.supabase.auth.sign_out()
+                del st.session_state.user
+                st.experimental_rerun()
 
+        # logo e navegação
+        st.image("static/plgn_logo.png", width=240)
         st.markdown("## Navegação")
         page = st.radio("", ["Dashboard", "Relatório Semanal", "Administração"])
-        return page

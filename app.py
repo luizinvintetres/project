@@ -1,15 +1,11 @@
-"""
-Ponto de entrada da aplicação Streamlit
----------------------------------------
-
-– Navegação na sidebar
-– Cada página é um módulo separado
-– Administração agora é uma tela própria (não um expander)
-"""
 import streamlit as st
+from services.supabase_client import supabase
+from components.sidebar import show_sidebar
+from pages_custom import dashboard, relatorio_semanal
+from components import admin_panel
 
 # -----------------------------------------------------------------------------
-# Configuração geral do app (deve ser o primeiro comando Streamlit)
+# 1) CONFIGURAÇÃO INICIAL (sempre antes de qualquer st.*)
 # -----------------------------------------------------------------------------
 st.set_page_config(
     page_title="PLGN Tesouraria",
@@ -17,30 +13,49 @@ st.set_page_config(
     page_icon="💼",
 )
 
-st.title("🏦 PLGN Tesouraria")
+# -----------------------------------------------------------------------------
+# 2) TELA DE LOGIN
+# -----------------------------------------------------------------------------
+def login():
+    st.title("🔒 Login")
+    with st.form("login_form"):
+        email = st.text_input("E‑mail")
+        password = st.text_input("Senha", type="password")
+        if st.form_submit_button("Entrar"):
+            res = supabase.auth.sign_in(email=email, password=password)
+            user = getattr(res, "user", None)
+            if user:
+                st.session_state.user = user
+                st.experimental_rerun()
+            else:
+                st.error("E‑mail ou senha inválidos")
+
+# Se não estiver logado, mostra o login e interrompe o resto do script
+if "user" not in st.session_state:
+    login()
+    st.stop()
 
 # -----------------------------------------------------------------------------
-# Imports de módulos que utilizam comandos Streamlit devem vir após set_page_config
+# 3) LOGOUT NA SIDEBAR
 # -----------------------------------------------------------------------------
-from components.sidebar import show_sidebar
-from pages_custom import dashboard, relatorio_semanal
-from components import admin_panel
+st.sidebar.write(f"👤 {st.session_state.user.email}")
+if st.sidebar.button("Sair"):
+    supabase.auth.sign_out()
+    del st.session_state.user
+    st.experimental_rerun()
 
 # -----------------------------------------------------------------------------
-# Navegação via sidebar
+# 4) RESTANTE DO APP
 # -----------------------------------------------------------------------------
-page = show_sidebar()  # retorna: "Dashboard", "Relatório Semanal", "Administração"
+st.title(" PLGN Tesouraria")
 
-# -----------------------------------------------------------------------------
-# Router de páginas
-# -----------------------------------------------------------------------------
+page = show_sidebar()
 if page == "Dashboard":
     dashboard.render()
 elif page == "Relatório Semanal":
     relatorio_semanal.render()
 elif page == "Administração":
     st.subheader("⚙️ Painel de Administração")
-    st.markdown("Gerencie fundos, contas e importe extratos.")
     admin_panel.render()
 else:
     st.warning("Página não encontrada.")
