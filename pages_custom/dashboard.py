@@ -4,6 +4,7 @@ import altair as alt
 import pandas as pd
 import streamlit as st
 from datetime import date
+
 from services.supabase_client import (
     get_funds,
     get_accounts,
@@ -11,7 +12,32 @@ from services.supabase_client import (
     get_saldos,
 )
 
+# -----------------------------------------------------------------------------
+# Cached data loaders
+# -----------------------------------------------------------------------------
+@st.cache_data(show_spinner=False)
+def _load_transactions() -> pd.DataFrame:
+    return get_transactions()
 
+@st.cache_data(show_spinner=False)
+def _load_accounts() -> pd.DataFrame:
+    return get_accounts()[["acct_id", "nickname", "fund_id"]]
+
+@st.cache_data(show_spinner=False)
+def _load_funds() -> pd.DataFrame:
+    return get_funds()[["fund_id", "name"]]
+
+@st.cache_data(show_spinner=False)
+def _load_saldos() -> pd.DataFrame:
+    sal = get_saldos()
+    if sal is not None and not sal.empty:
+        sal["date"] = pd.to_datetime(sal["date"]).dt.date
+    return sal
+
+
+# -----------------------------------------------------------------------------
+# Métricas principais
+# -----------------------------------------------------------------------------
 def _metrics(df: pd.DataFrame, start_date: date, saldos_df: pd.DataFrame) -> None:
     col1, col2, col3, col4 = st.columns(4)
     total_in = df.loc[df["amount"] > 0, "amount"].sum()
@@ -24,28 +50,24 @@ def _metrics(df: pd.DataFrame, start_date: date, saldos_df: pd.DataFrame) -> Non
     col4.metric("Saldo Abertura", f"R$ {opening:,.2f}")
 
 
+# -----------------------------------------------------------------------------
+# Renderização
+# -----------------------------------------------------------------------------
 def render() -> None:
     st.header("📊 Dashboard Geral")
 
-    # Limpa caches para garantir dados atualizados
-    get_transactions.clear()
-    get_saldos.clear()
-    get_accounts.clear()
-    get_funds.clear()
+    # Carrega dados com cache
+    tx = _load_transactions()
+    acc = _load_accounts()
+    funds = _load_funds()
+    sal = _load_saldos()
 
-    # Carrega transações e demais dados
-    tx = get_transactions()
     if tx.empty:
         st.info("Nenhuma transação disponível.")
         return
-
-    acc = get_accounts()[["acct_id", "nickname", "fund_id"]]
-    funds = get_funds()[["fund_id", "name"]]
-    sal = get_saldos()
     if sal is None or sal.empty:
         st.warning("Tabela de saldos não disponível.")
         return
-    sal["date"] = pd.to_datetime(sal["date"]).dt.date
 
     # Monta DataFrame principal
     df = (
@@ -93,7 +115,7 @@ def render() -> None:
         st.warning("Nenhuma transação no intervalo selecionado.")
         return
 
-    # Métricas gerais
+    # Métricas
     _metrics(df, start, sal_df)
 
     # Gráfico de barras por tipo
