@@ -1,9 +1,18 @@
-# components/admin_panel.py
+"""
+components/admin_panel.py
+"""
 from __future__ import annotations
-import streamlit as st
+
 import importlib
 from datetime import datetime, date
-from services.supabase_client import supabase, get_saldos
+
+import streamlit as st
+
+from services.supabase_client import (
+    supabase,
+    get_saldos,
+    delete_file_records,
+)
 from utils.transforms import filter_already_imported_by_file
 
 
@@ -63,7 +72,9 @@ def render() -> None:
         acct_opts = {row['nickname']: row['acct_id'] for row in accounts}
         sel_acct = st.selectbox("Conta", list(acct_opts.keys()), key="admin_sel_acct")
         model_options = {"Arbi": "arbi"}
-        sel_model = st.selectbox("Modelo de Extrato", list(model_options.keys()), key="admin_sel_model")
+        sel_model = st.selectbox(
+            "Modelo de Extrato", list(model_options.keys()), key="admin_sel_model"
+        )
         file = st.file_uploader("Extrato", type=["csv", "xlsx", "xls"], key="admin_file")
 
         if file and st.button("Enviar agora", key="admin_upl_send"):
@@ -74,7 +85,7 @@ def render() -> None:
                 )
                 tx_df, bal_df = parser.read(file)
 
-                # Insere saldos de abertura (upsert para evitar duplicatas)
+                # Insere saldos de abertura (upsert)
                 for _, r in bal_df.iterrows():
                     d = r['date']
                     date_str = d.strftime("%Y-%m-%d") if isinstance(d, (datetime, date)) else str(d)
@@ -91,7 +102,7 @@ def render() -> None:
                 get_saldos.clear()
                 st.success(f"{len(bal_df)} saldos de abertura cadastrados.")
 
-                # Filtra e insere transações, com log do usuário
+                # Filtra e insere transações novas
                 df_new = filter_already_imported_by_file(
                     tx_df,
                     acct_opts[sel_acct],
@@ -138,5 +149,7 @@ def render() -> None:
             col1, col2 = st.columns([6, 1])
             col1.write(f)
             if col2.button("❌", key=f"admin_del_{f}"):
-                supabase.from_("import_log").delete().eq("filename", f).eq("uploader_email", user_email).execute()
-                st.success(f"Seus registros do arquivo '{f}' foram apagados.")
+                # Usa lógica centralizada para apagar todos os registros do arquivo
+                delete_file_records(filename=f, uploader_email=user_email)
+                st.success(f"Registros do arquivo '{f}' foram apagados.")
+                st.experimental_rerun()
