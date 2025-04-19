@@ -212,18 +212,18 @@ def render() -> None:
             get_saldos.clear()
             st.success("Saldo adicionado manualmente.")
 
-        # Histórico de Inserções Manuais
+        # 📜 Histórico de Inserções Manuais
         st.divider()
         if st.button("📜 Histórico de Inserções Manuais"):
-            st.subheader("📜 Histórico de Inserções Manuais")
+            st.subheader("📜 Inserções Manuais Recentes")
 
             # — Transações Manuais do Usuário —
             tx_hist = (
                 supabase
                 .from_("transactions")
-                .select("id,acct_id,date,description,amount,liquidation")
+                .select("id,date,description,amount,liquidation")
                 .eq("uploader_email", user_email)
-                .filter("filename", "is", "null")
+                .is_("filename", "is.null")
                 .execute()
                 .data
                 or []
@@ -231,17 +231,18 @@ def render() -> None:
             if tx_hist:
                 st.markdown("**Transações Manuais**")
                 for row in tx_hist:
-                    cols = st.columns([1, 2, 2, 1, 1])
-                    cols[0].write(row["date"])
-                    cols[1].write(row["description"])
-                    cols[2].write(f"R$ {row['amount']:,.2f}")
-                    cols[3].write("Entrada" if row["amount"] > 0 else "Saída")
+                    cols = st.columns([1.5, 3, 2, 1, 0.5])
+                    cols[0].write(f"📅 {row['date']}")
+                    cols[1].write(f"📝 {row['description']}")
+                    cols[2].write(f"💰 R$ {row['amount']:,.2f}")
+                    cols[3].write("✅" if row["amount"] > 0 else "🔻")
                     if cols[4].button("❌", key=f"del_manual_tx_{row['id']}"):
                         supabase.from_("transactions").delete().eq("id", row["id"]).execute()
                         get_transactions.clear()
+                        st.success("Transação removida.")
                         st.experimental_rerun()
             else:
-                st.info("Nenhuma transação manual cadastrada.")
+                st.info("Nenhuma transação manual encontrada.")
 
             st.markdown("---")
 
@@ -249,9 +250,9 @@ def render() -> None:
             sal_hist = (
                 supabase
                 .from_("saldos")
-                .select("id,acct_id,date,opening_balance")
+                .select("id,date,opening_balance")
                 .eq("uploader_email", user_email)
-                .filter("filename", "is", "null")
+                .is_("filename", "is.null")
                 .execute()
                 .data
                 or []
@@ -259,12 +260,13 @@ def render() -> None:
             if sal_hist:
                 st.markdown("**Saldos Manuais**")
                 for row in sal_hist:
-                    cols = st.columns([1, 2, 1])
-                    cols[0].write(row["date"])
-                    cols[1].write(f"R$ {row['opening_balance']:,.2f}")
+                    cols = st.columns([2, 3, 0.5])
+                    cols[0].write(f"📅 {row['date']}")
+                    cols[1].write(f"💼 R$ {row['opening_balance']:,.2f}")
                     if cols[2].button("❌", key=f"del_manual_sal_{row['id']}"):
                         supabase.from_("saldos").delete().eq("id", row["id"]).execute()
                         get_saldos.clear()
+                        st.success("Saldo removido.")
                         st.experimental_rerun()
             else:
-                st.info("Nenhum saldo manual cadastrado.")
+                st.info("Nenhum saldo manual encontrado.")
