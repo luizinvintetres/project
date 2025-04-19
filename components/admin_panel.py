@@ -6,11 +6,12 @@ from __future__ import annotations
 import importlib
 from datetime import datetime, date
 
-import streamlit as st
+import streamlit as st 
 
 from services.supabase_client import (
     supabase,
     get_saldos,
+    get_transactions,
     delete_file_records,
 )
 from utils.transforms import filter_already_imported_by_file, filter_new_transactions
