@@ -13,7 +13,7 @@ from services.supabase_client import (
     get_saldos,
     delete_file_records,
 )
-from utils.transforms import filter_already_imported_by_file
+from utils.transforms import filter_already_imported_by_file, filter_new_transactions
 
 
 def render() -> None:
