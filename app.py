@@ -33,7 +33,7 @@ def login():
                 user = getattr(resp, "user", None)
                 if user:
                     st.session_state.user = user
-                    st.experimental_rerun()
+                    st.rerun()
                 else:
                     st.error("Falha ao autenticar, usuário não retornado.")
             except Exception as err:
@@ -52,7 +52,7 @@ st.sidebar.write(f"👤 {st.session_state.user.email}")
 if st.sidebar.button("Sair"):
     supabase.auth.sign_out()
     del st.session_state.user
-    st.experimental_rerun()
+    st.rerun()
 
 # -----------------------------------------------------------------------------
 # 4) RESTANTE DO APP
