@@ -211,8 +211,8 @@ def render() -> None:
             # limpa cache para refletir imediatamente
             get_saldos.clear()
             st.success("Saldo adicionado manualmente.")
-
-       # 📜 Histórico de Inserções Manuais
+            
+            # 📜 Histórico de Inserções Manuais
     st.divider()
     if st.button("📜 Histórico de Inserções Manuais"):
         st.subheader("📜 Inserções Manuais Recentes")
@@ -229,7 +229,7 @@ def render() -> None:
         tx_hist = (
             supabase
             .from_("transactions")
-            .select("id, acct_id, date, description, amount, uploader_email")
+            .select("*")
             .eq("uploader_email", user_email)
             .is_("filename", "null")
             .execute()
@@ -246,19 +246,18 @@ def render() -> None:
                 cols[1].write(f"📝 {row['description']}")
                 cols[2].write(f"🏦 {conta}")
                 cols[3].write(f"📁 {fundo}")
-                if cols[4].button("❌", key=f"del_tx_{row['id']}"):
-                    try:
-                        supabase.from_("transactions") \
-                            .delete() \
-                            .eq("id", row["id"]) \
-                            .eq("uploader_email", user_email) \
-                            .execute()
-                        get_transactions.clear()
-                        st.success("Transação removida.")
-                        st.experimental_rerun()
-                    except Exception as e:
-                        st.error(f"Erro ao remover transação: {e}")
-
+                if cols[4].button("❌", key=f"del_tx_{idx}"):
+                    supabase.from_("transactions") \
+                        .delete() \
+                        .eq("acct_id", row["acct_id"]) \
+                        .eq("date", row["date"]) \
+                        .eq("description", row["description"]) \
+                        .eq("amount", row["amount"]) \
+                        .eq("uploader_email", user_email) \
+                        .execute()
+                    get_transactions.clear()
+                    st.success("Transação removida.")
+                    st.experimental_rerun()
         else:
             st.info("Nenhuma transação manual encontrada.")
 
@@ -268,7 +267,7 @@ def render() -> None:
         sal_hist = (
             supabase
             .from_("saldos")
-            .select("id, acct_id, date, opening_balance, uploader_email")
+            .select("*")
             .eq("uploader_email", user_email)
             .is_("filename", "null")
             .execute()
@@ -285,17 +284,15 @@ def render() -> None:
                 cols[1].write(f"💼 R$ {row['opening_balance']:,.2f}")
                 cols[2].write(f"🏦 {conta}")
                 cols[3].write(f"📁 {fundo}")
-                if cols[4].button("❌", key=f"del_sal_{row['id']}"):
-                    try:
-                        supabase.from_("saldos") \
-                            .delete() \
-                            .eq("id", row["id"]) \
-                            .eq("uploader_email", user_email) \
-                            .execute()
-                        get_saldos.clear()
-                        st.success("Saldo removido.")
-                        st.experimental_rerun()
-                    except Exception as e:
-                        st.error(f"Erro ao remover saldo: {e}")
+                if cols[4].button("❌", key=f"del_sal_{idx}"):
+                    supabase.from_("saldos") \
+                        .delete() \
+                        .eq("acct_id", row["acct_id"]) \
+                        .eq("date", row["date"]) \
+                        .eq("uploader_email", user_email) \
+                        .execute()
+                    get_saldos.clear()
+                    st.success("Saldo removido.")
+                    st.experimental_rerun()
         else:
             st.info("Nenhum saldo manual encontrado.")
