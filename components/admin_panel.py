@@ -152,4 +152,4 @@ def render() -> None:
                 # Usa lógica centralizada para apagar todos os registros do arquivo
                 delete_file_records(filename=f, uploader_email=user_email)
                 st.success(f"Registros do arquivo '{f}' foram apagados.")
-                st.experimental_rerun()
+                return
