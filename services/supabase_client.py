@@ -1,6 +1,6 @@
-"""
-Conexão e wrappers de cache para o Supabase
-"""
+ """
+ Conexão e wrappers de cache para o Supabase
+ """
 from __future__ import annotations
 
 import pandas as pd
@@ -40,13 +40,18 @@ def get_transactions() -> pd.DataFrame:
 def get_saldos() -> pd.DataFrame:
     """
     Recupera saldos de abertura do banco.
-    Columns: acct_id, date (date), opening_balance (float), uploader_email
+    Columns: acct_id, date (date), opening_balance (float), filename, uploader_email
     """
     resp = supabase.table("saldos").select("*").execute()
     df = pd.DataFrame(resp.data or [])
     if not df.empty:
-        df["date"] = pd.to_datetime(df["date"])  # keep datetime for merging
+        df["date"] = pd.to_datetime(df["date"])
     return df
+
+@st.cache_data(show_spinner=False)
+def get_import_logs() -> pd.DataFrame:
+    resp = supabase.table("import_log").select("*").execute()
+    return pd.DataFrame(resp.data or [])
 
 # -----------------------------------------------------------------------------
 # Helpers de escrita (limpam caches)
@@ -55,14 +60,17 @@ def insert_fund(data: dict) -> None:
     supabase.table("funds").insert(data).execute()
     get_funds.clear()
 
+
 def insert_account(data: dict) -> None:
     supabase.table("accounts").insert(data).execute()
     get_accounts.clear()
 
+
 def insert_transaction(data: dict) -> None:
     supabase.table("transactions").insert(data).execute()
     get_transactions.clear()
-    
+
+
 def insert_saldo(
     acct_id: str,
     date: date,
@@ -79,11 +87,9 @@ def insert_saldo(
     }]).execute()
     get_saldos.clear()
 
-
 # -----------------------------------------------------------------------------
 # Import logs e saldos
 # -----------------------------------------------------------------------------
-
 def get_imported_dates(acct_id: str) -> set[date]:
     resp = (
         supabase
@@ -115,19 +121,32 @@ def add_import_log(
     supabase.table("import_log").upsert(payload).execute()
     get_import_logs.clear()
 
-@st.cache_data(show_spinner=False)
-def get_import_logs() -> pd.DataFrame:
-    resp = supabase.table("import_log").select("*").execute()
-    return pd.DataFrame(resp.data or [])
-
-
+# -----------------------------------------------------------------------------
+# Função para deleção de registros de um arquivo
+# -----------------------------------------------------------------------------
 def delete_file_records(filename: str, uploader_email: str | None = None) -> None:
     # Apaga transações associadas ao arquivo
-    supabase.table("transactions").delete().eq("filename", filename).execute()
-    # Apaga logs de importação, opcionalmente filtrando por usuário
+    supabase.table("transactions") \
+        .delete() \
+        .eq("filename", filename) \
+        .execute()
+
+    # Apaga logs de importação (opcionalmente filtrando usuário)
     query = supabase.table("import_log").delete().eq("filename", filename)
     if uploader_email:
         query = query.eq("uploader_email", uploader_email)
     query.execute()
+
+    # Apaga saldos associados ao arquivo
+    supabase.table("saldos") \
+        .delete() \
+        .eq("filename", filename) \
+        .execute()
+
+    # Opcional: Apaga o arquivo do Storage se for o caso
+    # supabase.storage.from("nome_do_bucket").remove([filename]).execute()
+
+    # Limpa caches para forçar nova leitura do banco
     get_transactions.clear()
     get_import_logs.clear()
+    get_saldos.clear()
