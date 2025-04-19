@@ -68,10 +68,10 @@ def render() -> None:
 
         if file and st.button("Enviar agora", key="admin_upl_send"):
             try:
+                # Parser retorna (transactions, balances)
                 parser = importlib.import_module(
                     f"components.modelos_extratos.{model_options[sel_model]}"
                 )
-                # parser.read retorna tuple (transactions, balances)
                 tx_df, bal_df = parser.read(file)
 
                 # Insere saldos de abertura
@@ -88,9 +88,12 @@ def render() -> None:
                     ).execute()
                 st.success(f"{len(bal_df)} saldos de abertura cadastrados.")
 
-                # Filtra e insere transações
+                # Filtra e insere transações, com log do usuário
                 df_new = filter_already_imported_by_file(
-                    tx_df, acct_opts[sel_acct], file.name
+                    tx_df,
+                    acct_opts[sel_acct],
+                    file.name,
+                    user_email
                 )
                 if df_new.empty:
                     st.warning("Nenhuma transação nova: todas já importadas.")
@@ -108,11 +111,6 @@ def render() -> None:
                             }
                         ).execute()
                     st.success(f"{len(df_new)} transações importadas com sucesso!")
-
-                # Registra import_log
-                supabase.from_("import_log").insert(
-                    {"filename": file.name, "uploader_email": user_email}
-                ).execute()
 
             except Exception as e:
                 st.error(f"Erro ao importar extrato: {e}")

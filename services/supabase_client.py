@@ -6,6 +6,7 @@ from __future__ import annotations
 import pandas as pd
 import streamlit as st
 from supabase import create_client, Client
+from datetime import date
 
 # -----------------------------------------------------------------------------
 # Conexão única
@@ -49,28 +50,41 @@ def insert_account(data: dict) -> None:
 def insert_transaction(data: dict) -> None:
     supabase.table("transactions").insert(data).execute()
     get_transactions.clear()
-# ----- acrescente isso em services/supabase_client.py ------------------------
 
-from datetime import date
+# -----------------------------------------------------------------------------
+# Import logs e saldos
+# -----------------------------------------------------------------------------
 
 def get_imported_dates(acct_id: str) -> set[date]:
-    resp = supabase.table("import_log") \
-                   .select("import_date") \
-                   .eq("acct_id", acct_id) \
-                   .execute()
-
-    # Converte string → datetime.date
+    resp = (
+        supabase
+        .table("import_log")
+        .select("import_date")
+        .eq("acct_id", acct_id)
+        .execute()
+    )
     return {date.fromisoformat(r["import_date"]) for r in (resp.data or [])}
 
-def add_import_log(acct_id: str, dates: set[datetime.date], filename: str) -> None:
+
+def add_import_log(
+    acct_id: str,
+    dates: set[date],
+    filename: str,
+    uploader_email: str
+) -> None:
     if not dates:
         return
-    payload = [{
-        "acct_id": acct_id,
-        "import_date": d.isoformat(),
-        "filename": filename
-    } for d in dates]
+    payload = [
+        {
+            "acct_id": acct_id,
+            "import_date": d.isoformat(),
+            "filename": filename,
+            "uploader_email": uploader_email,
+        }
+        for d in dates
+    ]
     supabase.table("import_log").upsert(payload).execute()
+    get_import_logs.clear()
 
 @st.cache_data(show_spinner=False)
 def get_import_logs() -> pd.DataFrame:
@@ -78,11 +92,13 @@ def get_import_logs() -> pd.DataFrame:
     return pd.DataFrame(resp.data or [])
 
 
-def delete_file_records(filename: str) -> None:
+def delete_file_records(filename: str, uploader_email: str | None = None) -> None:
+    # Apaga transações associadas ao arquivo
     supabase.table("transactions").delete().eq("filename", filename).execute()
-    supabase.table("import_log").delete().eq("filename", filename).execute()
+    # Apaga logs de importação, opcionalmente filtrando por usuário
+    query = supabase.table("import_log").delete().eq("filename", filename)
+    if uploader_email:
+        query = query.eq("uploader_email", uploader_email)
+    query.execute()
     get_transactions.clear()
     get_import_logs.clear()
-# -----------------------------------------------------------------------------
-
-#testesdfdf
