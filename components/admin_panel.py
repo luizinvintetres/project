@@ -3,7 +3,7 @@ from __future__ import annotations
 import streamlit as st
 import importlib
 from datetime import datetime, date
-from services.supabase_client import supabase
+from services.supabase_client import supabase, get_saldos
 from utils.transforms import filter_already_imported_by_file
 
 
@@ -74,17 +74,21 @@ def render() -> None:
                 )
                 tx_df, bal_df = parser.read(file)
 
-                # Insere saldos de abertura
+                # Insere saldos de abertura (upsert para evitar duplicatas)
                 for _, r in bal_df.iterrows():
                     d = r['date']
                     date_str = d.strftime("%Y-%m-%d") if isinstance(d, (datetime, date)) else str(d)
-                    supabase.from_("saldos").insert({
+                    payload = {
                         "acct_id": acct_opts[sel_acct],
                         "date": date_str,
                         "opening_balance": float(r["opening_balance"]),
                         "filename": file.name,
                         "uploader_email": user_email,
-                    }).execute()
+                    }
+                    supabase.from_("saldos").upsert([payload]).execute()
+
+                # Limpa cache de saldos para refletir imediatamente
+                get_saldos.clear()
                 st.success(f"{len(bal_df)} saldos de abertura cadastrados.")
 
                 # Filtra e insere transações, com log do usuário
