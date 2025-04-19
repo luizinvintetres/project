@@ -103,12 +103,19 @@ def render() -> None:
                 st.success(f"{len(bal_df)} saldos de abertura cadastrados.")
 
                 # Filtra e insere transações novas
-                df_new = filter_already_imported_by_file(
+                # primeiro filtra por arquivo (opcional, se quiser manter o log por filename)
+                df_file_filtered = filter_already_imported_by_file(
                     tx_df,
                     acct_opts[sel_acct],
                     file.name,
                     user_email
                 )
+                # depois filtra transação a transação contra o banco
+                df_final = filter_new_transactions(
+                    df_file_filtered,
+                    acct_opts[sel_acct]
+                )
+                df_new = df_final
                 if df_new.empty:
                     st.warning("Nenhuma transação nova: todas já importadas.")
                 else:

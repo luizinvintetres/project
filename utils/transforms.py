@@ -33,14 +33,12 @@ def filter_already_imported_by_file(
     filename: str,
     uploader_email: str
 ) -> pd.DataFrame:
-    """
-    Filtra transações já importadas e registra logs com uploader_email.
-    """
-    df_copy = df.copy()
-    df_copy["date"] = pd.to_datetime(df_copy["date"]).dt.date
+    df2 = df.copy()
+    df2["date"] = pd.to_datetime(df2["date"]).dt.date
 
-    imported = db.get_imported_dates(acct_id)
-    df_new = df_copy[~df_copy["date"].isin(imported)]
+    # agora passa também o filename
+    imported = db.get_imported_dates(acct_id, filename)
+    df_new = df2[~df2["date"].isin(imported)]
 
     if not df_new.empty:
         db.add_import_log(

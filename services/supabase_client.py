@@ -94,15 +94,17 @@ def insert_saldo(
 # -----------------------------------------------------------------------------
 # Import logs e datas importadas
 # -----------------------------------------------------------------------------
-def get_imported_dates(acct_id: str) -> set[date]:
-    resp = (
+def get_imported_dates(acct_id: str, filename: str) -> set[date]:
+    query = (
         supabase
         .table("import_log")
         .select("import_date")
         .eq("acct_id", acct_id)
-        .execute()
+        .eq("filename", filename)
     )
+    resp = query.execute()
     return {date.fromisoformat(r["import_date"]) for r in (resp.data or [])}
+
 
 
 def add_import_log(
