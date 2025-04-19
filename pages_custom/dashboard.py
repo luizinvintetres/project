@@ -27,13 +27,11 @@ def _metrics(df: pd.DataFrame, start_date: date, saldos_df: pd.DataFrame) -> Non
 def render() -> None:
     st.header("📊 Dashboard Geral")
 
-    # Botão de atualização manual para invalidar cache e recarregar dados
-    if st.button("🔄 Atualizar Dados", key="refresh_dashboard"):
-        get_transactions.clear()
-        get_saldos.clear()
-        get_accounts.clear()
-        get_funds.clear()
-        return
+    # Limpa caches para garantir dados atualizados
+    get_transactions.clear()
+    get_saldos.clear()
+    get_accounts.clear()
+    get_funds.clear()
 
     # Carrega transações e demais dados
     tx = get_transactions()
@@ -95,7 +93,7 @@ def render() -> None:
         st.warning("Nenhuma transação no intervalo selecionado.")
         return
 
-    # Métricas
+    # Métricas gerais
     _metrics(df, start, sal_df)
 
     # Gráfico de barras por tipo
