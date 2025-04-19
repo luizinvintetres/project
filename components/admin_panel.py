@@ -1,14 +1,17 @@
 # components/admin_panel.py
 from __future__ import annotations
 import streamlit as st
-import pandas as pd
 import importlib
+from datetime import datetime, date
 from services.supabase_client import supabase
-from utils.transforms import clean_statement, filter_already_imported_by_file
+from utils.transforms import filter_already_imported_by_file
 
 
 def render() -> None:
     st.header("⚙️ Administração")
+
+    # Captura e-mail do usuário
+    user_email = st.session_state.user.email
 
     # ➕ Novo Fundo
     st.subheader("➕ Novo Fundo")
@@ -51,20 +54,16 @@ def render() -> None:
 
     st.divider()
 
-    # 📥 Upload de Extrato
+    # 📥 Upload de Extrato e inserção de saldos e transações
     st.subheader("📥 Upload de Extrato")
     accounts = supabase.from_("accounts").select("acct_id,nickname").execute().data or []
     if not accounts:
         st.info("Cadastre contas para habilitar uploads.")
     else:
         acct_opts = {row['nickname']: row['acct_id'] for row in accounts}
-        sel_acct_nick = st.selectbox(
-            "Conta", list(acct_opts.keys()), key="admin_sel_acct"
-        )
+        sel_acct = st.selectbox("Conta", list(acct_opts.keys()), key="admin_sel_acct")
         model_options = {"Arbi": "arbi"}
-        sel_model = st.selectbox(
-            "Modelo de Extrato", list(model_options.keys()), key="admin_sel_model"
-        )
+        sel_model = st.selectbox("Modelo de Extrato", list(model_options.keys()), key="admin_sel_model")
         file = st.file_uploader("Extrato", type=["csv", "xlsx", "xls"], key="admin_file")
 
         if file and st.button("Enviar agora", key="admin_upl_send"):
@@ -72,42 +71,71 @@ def render() -> None:
                 parser = importlib.import_module(
                     f"components.modelos_extratos.{model_options[sel_model]}"
                 )
-                df_raw = parser.read(file)
+                # parser.read retorna tuple (transactions, balances)
+                tx_df, bal_df = parser.read(file)
+
+                # Insere saldos de abertura
+                for _, r in bal_df.iterrows():
+                    d = r['date']
+                    date_str = d.strftime("%Y-%m-%d") if isinstance(d, (datetime, date)) else str(d)
+                    supabase.from_("saldos").insert(
+                        {
+                            "acct_id": acct_opts[sel_acct],
+                            "date": date_str,
+                            "opening_balance": float(r['opening_balance']),
+                            "uploader_email": user_email,
+                        }
+                    ).execute()
+                st.success(f"{len(bal_df)} saldos de abertura cadastrados.")
+
+                # Filtra e insere transações
                 df_new = filter_already_imported_by_file(
-                    df_raw, acct_opts[sel_acct_nick], file.name
+                    tx_df, acct_opts[sel_acct], file.name
                 )
                 if df_new.empty:
-                    st.warning("Todas as datas deste extrato já foram importadas.")
+                    st.warning("Nenhuma transação nova: todas já importadas.")
                 else:
                     for _, row in df_new.iterrows():
                         supabase.from_("transactions").insert(
                             {
-                                "acct_id": acct_opts[sel_acct_nick],
+                                "acct_id": acct_opts[sel_acct],
                                 "date": row["date"].strftime("%Y-%m-%d"),
                                 "description": row["description"],
                                 "amount": float(row["amount"]),
                                 "liquidation": bool(row["liquidation"]),
                                 "filename": file.name,
+                                "uploader_email": user_email,
                             }
                         ).execute()
-                    st.success(
-                        f"{len(df_new)} novas transações enviadas com sucesso!"
-                    )
+                    st.success(f"{len(df_new)} transações importadas com sucesso!")
+
+                # Registra import_log
+                supabase.from_("import_log").insert(
+                    {"filename": file.name, "uploader_email": user_email}
+                ).execute()
+
             except Exception as e:
                 st.error(f"Erro ao importar extrato: {e}")
 
     st.divider()
 
-    # 🧾 Arquivos importados
-    st.subheader("🧾 Arquivos importados")
-    logs = supabase.from_("import_log").select("filename").execute().data or []
+    # 🧾 Meus Arquivos importados
+    st.subheader("🧾 Meus Arquivos importados")
+    logs = (
+        supabase.from_("import_log")
+        .select("filename")
+        .eq("uploader_email", user_email)
+        .execute()
+        .data
+        or []
+    )
     if not logs:
-        st.info("Nenhum arquivo foi importado ainda.")
+        st.info("Você ainda não importou nenhum arquivo.")
     else:
-        filenames = sorted({row["filename"] for row in logs if row.get("filename")})
+        filenames = sorted({r["filename"] for r in logs if r.get("filename")})
         for f in filenames:
             col1, col2 = st.columns([6, 1])
             col1.write(f)
             if col2.button("❌", key=f"admin_del_{f}"):
-                supabase.from_("import_log").delete().eq("filename", f).execute()
-                st.success(f"Registros do arquivo '{f}' apagados.")
+                supabase.from_("import_log").delete().eq("filename", f).eq("uploader_email", user_email).execute()
+                st.success(f"Seus registros do arquivo '{f}' foram apagados.")
