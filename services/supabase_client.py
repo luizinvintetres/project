@@ -62,6 +62,23 @@ def insert_account(data: dict) -> None:
 def insert_transaction(data: dict) -> None:
     supabase.table("transactions").insert(data).execute()
     get_transactions.clear()
+    
+def insert_saldo(
+    acct_id: str,
+    date: date,
+    opening_balance: float,
+    filename: str,
+    uploader_email: str
+) -> None:
+    supabase.table("saldos").upsert([{
+        "acct_id": acct_id,
+        "date": date.isoformat(),
+        "opening_balance": opening_balance,
+        "filename": filename,
+        "uploader_email": uploader_email,
+    }]).execute()
+    get_saldos.clear()
+
 
 # -----------------------------------------------------------------------------
 # Import logs e saldos

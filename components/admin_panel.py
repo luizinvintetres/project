@@ -78,14 +78,13 @@ def render() -> None:
                 for _, r in bal_df.iterrows():
                     d = r['date']
                     date_str = d.strftime("%Y-%m-%d") if isinstance(d, (datetime, date)) else str(d)
-                    supabase.from_("saldos").insert(
-                        {
-                            "acct_id": acct_opts[sel_acct],
-                            "date": date_str,
-                            "opening_balance": float(r['opening_balance']),
-                            "uploader_email": user_email,
-                        }
-                    ).execute()
+                    supabase.from_("saldos").insert({
+                        "acct_id": acct_opts[sel_acct],
+                        "date": date_str,
+                        "opening_balance": float(r["opening_balance"]),
+                        "filename": file.name,
+                        "uploader_email": user_email,
+                    }).execute()
                 st.success(f"{len(bal_df)} saldos de abertura cadastrados.")
 
                 # Filtra e insere transações, com log do usuário
