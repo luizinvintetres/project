@@ -161,79 +161,56 @@ def render() -> None:
                 st.success(f"Registros do arquivo '{f}' foram apagados.")
                 return
 
+    # Seção de inserção manual
     st.divider()
+    st.subheader("📝 Inserção Manual")
 
-    st.subheader("📝 Inserção Manual de Dados")
+    # Inserção de Transação Manual
+    st.markdown("**Transação Manual**")
+    manual_date = st.date_input("Data", key="manual_tx_date")
+    manual_fund = st.selectbox(
+        "Fundo (Transação)", list({f['name']:f['fund_id'] for f in get_funds().to_dict('records')}.keys()), key="manual_tx_fund"
+    )
+    manual_acct = st.selectbox(
+        "Conta (Transação)", list({a['nickname']:a['acct_id'] for a in get_accounts().to_dict('records')}.keys()), key="manual_tx_acct"
+    )
+    manual_amount = st.text_input("Valor (use vírgula para decimal)", key="manual_tx_amount")
+    manual_desc = st.text_input("Descrição", key="manual_tx_desc")
+    if st.button("Adicionar Transação", key="manual_tx_add"):
+        # Converte string com vírgula para float
+        val = float(manual_amount.replace('.', '').replace(',', '.'))
+        insert_transaction({
+            "acct_id": get_accounts().set_index('nickname').loc[manual_acct, 'acct_id'],
+            "date": manual_date.isoformat(),
+            "description": manual_desc,
+            "amount": val,
+            "liquidation": False,
+            "filename": None,
+            "uploader_email": user_email,
+        })
+        st.success("Transação adicionada manualmente.")
 
-    funds_df = get_funds()
-    accounts_df = get_accounts()
-    if funds_df.empty or accounts_df.empty:
-        st.info("Cadastre fundos e contas antes de adicionar dados manualmente.")
-    else:
-        # ---- Transações
-        st.markdown("#### ➕ Nova Transação Manual")
+    st.markdown("---")
 
-        tx_date = st.date_input("Data da Transação", key="manual_tx_date")
+    # Inserção de Saldo Manual
+    st.markdown("**Saldo Manual**")
+    manual_saldo_date = st.date_input("Data", key="manual_saldo_date")
+    manual_saldo_fund = st.selectbox(
+        "Fundo (Saldo)", list({f['name']:f['fund_id'] for f in get_funds().to_dict('records')}.keys()), key="manual_saldo_fund"
+    )
+    manual_saldo_acct = st.selectbox(
+        "Conta (Saldo)", list({a['nickname']:a['acct_id'] for a in get_accounts().to_dict('records')}.keys()), key="manual_saldo_acct"
+    )
+    manual_saldo_amount = st.text_input("Valor (use vírgula para decimal)", key="manual_saldo_amount")
+    if st.button("Adicionar Saldo", key="manual_saldo_add"):
+        sbal = float(manual_saldo_amount.replace('.', '').replace(',', '.'))
+        insert_saldo(
+            get_accounts().set_index('nickname').loc[manual_saldo_acct, 'acct_id'],
+            manual_saldo_date,
+            sbal,
+            filename=None,
+            uploader_email=user_email,
+        )
+        st.success("Saldo adicionado manualmente.")
 
-        fund_names = sorted(funds_df["name"].unique())
-        sel_fund_name = st.selectbox("Fundo", fund_names, key="manual_tx_fund")
-        sel_fund_id = funds_df.loc[funds_df["name"] == sel_fund_name, "fund_id"].values[0]
-
-        contas = accounts_df[accounts_df["fund_id"] == sel_fund_id]
-        if contas.empty:
-            st.warning("Esse fundo ainda não tem contas cadastradas.")
-        else:
-            conta_opts = {row["nickname"]: row["acct_id"] for _, row in contas.iterrows()}
-            sel_conta = st.selectbox("Conta", list(conta_opts.keys()), key="manual_tx_acct")
-
-            tx_valor = st.text_input("Valor (use vírgula como separador decimal)", key="manual_tx_valor")
-            tx_descr = st.text_input("Descrição", key="manual_tx_descr")
-
-            if st.button("Inserir Transação", key="manual_tx_btn") and tx_valor and tx_descr:
-                try:
-                    valor_float = float(tx_valor.replace(".", "").replace(",", "."))
-                    insert_transaction({
-                        "acct_id": conta_opts[sel_conta],
-                        "date": tx_date.isoformat(),
-                        "amount": valor_float,
-                        "description": tx_descr,
-                        "filename": "manual",
-                        "uploader_email": st.session_state.user.email,
-                        "liquidation": False,
-                    })
-                    st.success("Transação manual inserida com sucesso!")
-                except ValueError:
-                    st.error("Valor inválido. Use apenas números e vírgula como separador decimal.")
-
-        st.divider()
-
-        # ---- Saldos
-        st.markdown("#### 💰 Novo Saldo Manual")
-
-        saldo_date = st.date_input("Data do Saldo", key="manual_saldo_date")
-
-        sel_fund_name_saldo = st.selectbox("Fundo", fund_names, key="manual_saldo_fund")
-        sel_fund_id_saldo = funds_df.loc[funds_df["name"] == sel_fund_name_saldo, "fund_id"].values[0]
-
-        contas_saldo = accounts_df[accounts_df["fund_id"] == sel_fund_id_saldo]
-        if contas_saldo.empty:
-            st.warning("Esse fundo ainda não tem contas cadastradas.")
-        else:
-            conta_opts_saldo = {row["nickname"]: row["acct_id"] for _, row in contas_saldo.iterrows()}
-            sel_conta_saldo = st.selectbox("Conta", list(conta_opts_saldo.keys()), key="manual_saldo_acct")
-
-            saldo_valor = st.text_input("Valor (use vírgula como separador decimal)", key="manual_saldo_valor")
-
-            if st.button("Inserir Saldo", key="manual_saldo_btn") and saldo_valor:
-                try:
-                    valor_float = float(saldo_valor.replace(".", "").replace(",", "."))
-                    insert_saldo(
-                        acct_id=conta_opts_saldo[sel_conta_saldo],
-                        date=saldo_date,
-                        opening_balance=valor_float,
-                        filename="manual",
-                        uploader_email=st.session_state.user.email,
-                    )
-                    st.success("Saldo manual inserido com sucesso!")
-                except ValueError:
-                    st.error("Valor inválido. Use apenas números e vírgula como separador decimal.")
+    st.divider()
