@@ -1,6 +1,6 @@
- """
- Conexão e wrappers de cache para o Supabase
- """
+"""
+Conexão e wrappers de cache para o Supabase
+"""
 from __future__ import annotations
 
 import pandas as pd
@@ -78,6 +78,10 @@ def insert_saldo(
     filename: str,
     uploader_email: str
 ) -> None:
+    """
+    Insere um saldo de abertura no banco, com log de quem enviou.
+    Chama clear() em get_saldos() para invalidar o cache.
+    """
     supabase.table("saldos").upsert([{
         "acct_id": acct_id,
         "date": date.isoformat(),
@@ -88,7 +92,7 @@ def insert_saldo(
     get_saldos.clear()
 
 # -----------------------------------------------------------------------------
-# Import logs e saldos
+# Import logs e datas importadas
 # -----------------------------------------------------------------------------
 def get_imported_dates(acct_id: str) -> set[date]:
     resp = (
@@ -126,10 +130,7 @@ def add_import_log(
 # -----------------------------------------------------------------------------
 def delete_file_records(filename: str, uploader_email: str | None = None) -> None:
     # Apaga transações associadas ao arquivo
-    supabase.table("transactions") \
-        .delete() \
-        .eq("filename", filename) \
-        .execute()
+    supabase.table("transactions").delete().eq("filename", filename).execute()
 
     # Apaga logs de importação (opcionalmente filtrando usuário)
     query = supabase.table("import_log").delete().eq("filename", filename)
@@ -138,10 +139,7 @@ def delete_file_records(filename: str, uploader_email: str | None = None) -> Non
     query.execute()
 
     # Apaga saldos associados ao arquivo
-    supabase.table("saldos") \
-        .delete() \
-        .eq("filename", filename) \
-        .execute()
+    supabase.table("saldos").delete().eq("filename", filename).execute()
 
     # Opcional: Apaga o arquivo do Storage se for o caso
     # supabase.storage.from("nome_do_bucket").remove([filename]).execute()
