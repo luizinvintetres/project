@@ -20,24 +20,15 @@ def _metrics(df: pd.DataFrame, start_date: date, saldos_df: pd.DataFrame) -> Non
     col1.metric("Entradas", f"R$ {total_in:,.2f}")
     col2.metric("Saídas", f"R$ {abs(total_out):,.2f}")
     col3.metric("Saldo Líquido", f"R$ {net:,.2f}")
-    obs = saldos_df.loc[saldos_df["date"] == start_date, "opening_balance"].sum()
-    col4.metric("Saldo Abertura", f"R$ {obs:,.2f}")
+    opening = saldos_df.loc[saldos_df["date"] == start_date, "opening_balance"].sum()
+    col4.metric("Saldo Abertura", f"R$ {opening:,.2f}")
 
 
 def render() -> None:
     st.header("📊 Dashboard Geral")
 
-    # Limpa caches para buscar dados recentes
-    get_transactions.clear()
-    get_saldos.clear()
-
-    # Carrega dados
+    # Carrega dados mais recentes
     tx = get_transactions()
-    user_email = st.session_state.user.email
-
-    # Filtra transações do usuário antes de verificar vazios
-    if "uploader_email" in tx.columns:
-        tx = tx[tx["uploader_email"] == user_email]
     if tx.empty:
         st.info("Nenhuma transação disponível.")
         return
@@ -45,15 +36,12 @@ def render() -> None:
     acc = get_accounts()[["acct_id", "nickname", "fund_id"]]
     funds = get_funds()[["fund_id", "name"]]
     sal = get_saldos()
-    if sal is None:
+    if sal is None or sal.empty:
         st.warning("Tabela de saldos não disponível.")
         return
-    # Filtra saldos do usuário
-    if "uploader_email" in sal.columns:
-        sal = sal[sal["uploader_email"] == user_email]
     sal["date"] = pd.to_datetime(sal["date"]).dt.date
 
-    # Monta DataFrames
+    # Combina transações e saldos com nomes legíveis
     df = (
         tx
         .merge(acc, on="acct_id", how="left")
@@ -102,10 +90,10 @@ def render() -> None:
     # Métricas gerais
     _metrics(df, start, sal_df)
 
-    # Gráfico de barras
+    # Gráfico de barras por tipo
     df["type"] = df["amount"].apply(lambda x: "Entrada" if x > 0 else "Saída")
     df_daily = (
-        df.groupby(["date", "type"])["amount"]
+        df.groupby(["date", "type"])['amount']
         .sum()
         .reset_index()
         .sort_values("date")
@@ -117,7 +105,9 @@ def render() -> None:
             x=alt.X("date:T", title="Data"),
             y=alt.Y("amount:Q", title="Valor"),
             color=alt.Color(
-                "type:N", scale=alt.Scale(domain=["Entrada", "Saída"], range=["steelblue", "crimson"]), title="Tipo"
+                "type:N",
+                scale=alt.Scale(domain=["Entrada", "Saída"], range=["steelblue", "crimson"]),
+                title="Tipo"
             ),
             tooltip=["date:T", "amount:Q", "type:N"]
         )
@@ -126,9 +116,10 @@ def render() -> None:
     )
     st.altair_chart(chart, use_container_width=True)
 
-    # Tabelas
+    # Tabela de saldos de abertura
     st.subheader("Saldos de Abertura")
-    st.dataframe(sal_df[["date", "fund", "account", "opening_balance"]])
+    st.dataframe(sal_df[["date", "fund", "account", "opening_balance"]], use_container_width=True)
 
+    # Tabela de transações
     st.subheader("Transações")
-    st.dataframe(df[["date", "fund", "account", "description", "amount"]])
+    st.dataframe(df[["date", "fund", "account", "description", "amount"]], use_container_width=True)
