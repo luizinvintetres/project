@@ -27,12 +27,13 @@ def _metrics(df: pd.DataFrame, start_date: date, saldos_df: pd.DataFrame) -> Non
 def render() -> None:
     st.header("📊 Dashboard Geral")
 
-    # Carrega dados mais recentes
+    # Carrega transações
     tx = get_transactions()
     if tx.empty:
         st.info("Nenhuma transação disponível.")
         return
 
+    # Carrega contas, fundos e saldos
     acc = get_accounts()[["acct_id", "nickname", "fund_id"]]
     funds = get_funds()[["fund_id", "name"]]
     sal = get_saldos()
@@ -41,7 +42,7 @@ def render() -> None:
         return
     sal["date"] = pd.to_datetime(sal["date"]).dt.date
 
-    # Combina transações e saldos com nomes legíveis
+    # Une dados para exibição
     df = (
         tx
         .merge(acc, on="acct_id", how="left")
@@ -93,7 +94,7 @@ def render() -> None:
     # Gráfico de barras por tipo
     df["type"] = df["amount"].apply(lambda x: "Entrada" if x > 0 else "Saída")
     df_daily = (
-        df.groupby(["date", "type"])['amount']
+        df.groupby(["date", "type"])["amount"]
         .sum()
         .reset_index()
         .sort_values("date")
@@ -118,8 +119,14 @@ def render() -> None:
 
     # Tabela de saldos de abertura
     st.subheader("Saldos de Abertura")
-    st.dataframe(sal_df[["date", "fund", "account", "opening_balance"]], use_container_width=True)
+    st.dataframe(
+        sal_df[["date", "fund", "account", "opening_balance"]],
+        use_container_width=True
+    )
 
     # Tabela de transações
     st.subheader("Transações")
-    st.dataframe(df[["date", "fund", "account", "description", "amount"]], use_container_width=True)
+    st.dataframe(
+        df[["date", "fund", "account", "description", "amount"]],
+        use_container_width=True
+    )
