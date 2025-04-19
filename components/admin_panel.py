@@ -161,26 +161,28 @@ def render() -> None:
                 st.success(f"Registros do arquivo '{f}' foram apagados.")
                 return
 
-    # Seção de inserção manual
-    st.divider()
+        # 📝 Inserção Manual
     st.subheader("📝 Inserção Manual")
 
     # Inserção de Transação Manual
     st.markdown("**Transação Manual**")
     manual_date = st.date_input("Data", key="manual_tx_date")
+    funds_list = get_funds()
+    fund_names = {row['name']: row['fund_id'] for row in funds_list.to_dict('records')}
     manual_fund = st.selectbox(
-        "Fundo (Transação)", list({f['name']:f['fund_id'] for f in get_funds().to_dict('records')}.keys()), key="manual_tx_fund"
+        "Fundo (Transação)", list(fund_names.keys()), key="manual_tx_fund"
     )
+    accounts_list = get_accounts()
+    acct_names = {row['nickname']: row['acct_id'] for row in accounts_list.to_dict('records')}
     manual_acct = st.selectbox(
-        "Conta (Transação)", list({a['nickname']:a['acct_id'] for a in get_accounts().to_dict('records')}.keys()), key="manual_tx_acct"
+        "Conta (Transação)", list(acct_names.keys()), key="manual_tx_acct"
     )
     manual_amount = st.text_input("Valor (use vírgula para decimal)", key="manual_tx_amount")
     manual_desc = st.text_input("Descrição", key="manual_tx_desc")
     if st.button("Adicionar Transação", key="manual_tx_add"):
-        # Converte string com vírgula para float
         val = float(manual_amount.replace('.', '').replace(',', '.'))
         insert_transaction({
-            "acct_id": get_accounts().set_index('nickname').loc[manual_acct, 'acct_id'],
+            "acct_id": acct_names[manual_acct],
             "date": manual_date.isoformat(),
             "description": manual_desc,
             "amount": val,
@@ -196,16 +198,16 @@ def render() -> None:
     st.markdown("**Saldo Manual**")
     manual_saldo_date = st.date_input("Data", key="manual_saldo_date")
     manual_saldo_fund = st.selectbox(
-        "Fundo (Saldo)", list({f['name']:f['fund_id'] for f in get_funds().to_dict('records')}.keys()), key="manual_saldo_fund"
+        "Fundo (Saldo)", list(fund_names.keys()), key="manual_saldo_fund"
     )
     manual_saldo_acct = st.selectbox(
-        "Conta (Saldo)", list({a['nickname']:a['acct_id'] for a in get_accounts().to_dict('records')}.keys()), key="manual_saldo_acct"
+        "Conta (Saldo)", list(acct_names.keys()), key="manual_saldo_acct"
     )
     manual_saldo_amount = st.text_input("Valor (use vírgula para decimal)", key="manual_saldo_amount")
     if st.button("Adicionar Saldo", key="manual_saldo_add"):
         sbal = float(manual_saldo_amount.replace('.', '').replace(',', '.'))
         insert_saldo(
-            get_accounts().set_index('nickname').loc[manual_saldo_acct, 'acct_id'],
+            acct_names[manual_saldo_acct],
             manual_saldo_date,
             sbal,
             filename=None,
