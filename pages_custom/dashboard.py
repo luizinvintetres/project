@@ -57,10 +57,10 @@ def render() -> None:
     st.header("📊 Dashboard Geral")
 
     # Carrega dados com cache
-    tx = _load_transactions()
-    acc = _load_accounts()
-    funds = _load_funds()
-    sal = _load_saldos()
+    #tx = _load_transactions()
+    #acc = _load_accounts()
+    #funds = _load_funds()
+    #sal = _load_saldos()
 
     if tx.empty:
         st.info("Nenhuma transação disponível.")
