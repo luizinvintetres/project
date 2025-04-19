@@ -18,17 +18,17 @@ supabase: Client = create_client(_url, _key)
 # -----------------------------------------------------------------------------
 # Helpers de leitura (cacheados)
 # -----------------------------------------------------------------------------
-@st.cache_data(show_spinner=False)
+@st.cache_data(ttl=20,show_spinner=False)
 def get_funds() -> pd.DataFrame:
     resp = supabase.table("funds").select("*").execute()
     return pd.DataFrame(resp.data or [])
 
-@st.cache_data(show_spinner=False)
+@st.cache_data(ttl=20,show_spinner=False)
 def get_accounts() -> pd.DataFrame:
     resp = supabase.table("accounts").select("*").execute()
     return pd.DataFrame(resp.data or [])
 
-@st.cache_data(show_spinner=False)
+@st.cache_data(ttl=20,show_spinner=False)
 def get_transactions() -> pd.DataFrame:
     resp = supabase.table("transactions").select("*").execute()
     df = pd.DataFrame(resp.data or [])
@@ -36,7 +36,7 @@ def get_transactions() -> pd.DataFrame:
         df["date"] = pd.to_datetime(df["date"])
     return df
 
-@st.cache_data(show_spinner=False)
+@st.cache_data(ttl=20,show_spinner=False)
 def get_saldos() -> pd.DataFrame:
     """
     Recupera saldos de abertura do banco.
@@ -48,7 +48,7 @@ def get_saldos() -> pd.DataFrame:
         df["date"] = pd.to_datetime(df["date"])
     return df
 
-@st.cache_data(show_spinner=False)
+@st.cache_data(ttl=20,show_spinner=False)
 def get_import_logs() -> pd.DataFrame:
     resp = supabase.table("import_log").select("*").execute()
     return pd.DataFrame(resp.data or [])
