@@ -1,57 +1,42 @@
-# pages_custom/relatorio_semanal.py
 from __future__ import annotations
-from datetime import datetime, timedelta, date
 
-import streamlit as st
+import altair as alt
 import pandas as pd
-
+import streamlit as st
+from datetime import date
 from services.supabase_client import (
-    get_transactions,
-    get_accounts,
     get_funds,
+    get_accounts,
+    get_transactions,
     get_saldos,
 )
 
 
-@st.cache_data(show_spinner=False)
-def _load_joined_transactions() -> pd.DataFrame:
-    tx = get_transactions()
-    if tx.empty:
-        return tx
-    acc = get_accounts()[["acct_id", "fund_id"]]
-    funds = get_funds()[["fund_id", "name"]]
-    return (
-        tx
-        .merge(acc, on="acct_id", how="left")
-        .merge(funds, on="fund_id", how="left")
-    )
-
-
-@st.cache_data(show_spinner=False)
-def _load_joined_saldos() -> pd.DataFrame:
-    sal = get_saldos()
-    if sal.empty:
-        return sal
-    acc = get_accounts()[["acct_id", "fund_id"]]
-    funds = get_funds()[["fund_id", "name"]]
-    return (
-        sal
-        .merge(acc, on="acct_id", how="left")
-        .merge(funds, on="fund_id", how="left")
-    )
-
-
-def _week_window(offset: int) -> tuple[date, date]:
-    """Retorna a segunda e o domingo da semana (offset)"""
-    today = datetime.today().date()
-    monday = today - timedelta(days=today.weekday())
-    start = monday + timedelta(weeks=offset)
-    end = start + timedelta(days=6)
-    return start, end
+def _metrics(df: pd.DataFrame, start_date: date, saldos_df: pd.DataFrame) -> None:
+    col1, col2, col3, col4 = st.columns(4)
+    total_in = df.loc[df["amount"] > 0, "amount"].sum()
+    total_out = df.loc[df["amount"] < 0, "amount"].sum()
+    net = total_in + total_out
+    col1.metric("Entradas", f"R$ {total_in:,.2f}")
+    col2.metric("Saídas", f"R$ {abs(total_out):,.2f}")
+    col3.metric("Saldo Líquido", f"R$ {net:,.2f}")
+    opening = saldos_df.loc[saldos_df["date"] == start_date, "opening_balance"].sum()
+    col4.metric("Saldo Abertura", f"R$ {opening:,.2f}")
 
 
 def render() -> None:
     st.header("🗓️ Relatório Semanal — Resumo por Fundo")
+
+    # Botão de atualização manual para invalidar cache e recarregar dados
+    if st.button("🔄 Atualizar Dados", key="refresh_weekly"):
+        _load_joined_transactions.clear()
+        _load_joined_saldos.clear()
+        # limpar caches subjacentes
+        get_transactions.clear()
+        get_accounts.clear()
+        get_funds.clear()
+        get_saldos.clear()
+        return
 
     # Carrega transações e checa
     tx = _load_joined_transactions()
@@ -64,12 +49,14 @@ def render() -> None:
         st.session_state.week_offset = 0
     cols = st.columns([1, 4, 1])
     with cols[0]:
-        if st.button("◀", help="Semana anterior"):
+        if st.button("◀", help="Semana anterior", key="prev_week"):
             st.session_state.week_offset -= 1
+            return  # força recarregar com novo offset
     start, end = _week_window(st.session_state.week_offset)
     with cols[2]:
-        if st.button("▶", disabled=(st.session_state.week_offset == 0), help="Próxima semana"):
+        if st.button("▶", disabled=(st.session_state.week_offset == 0), help="Próxima semana", key="next_week"):
             st.session_state.week_offset += 1
+            return  # força recarregar com novo offset
     cols[1].markdown(
         f"<div style='text-align:center; font-weight:600;'>"
         f"{start.strftime('%d/%m/%Y')} ➜ {end.strftime('%d/%m/%Y')}"  
