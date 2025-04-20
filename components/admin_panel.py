@@ -27,3 +27,4 @@ def render():
     st.divider()
 
     render_history_panel(user_email)
+    
