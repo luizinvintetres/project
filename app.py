@@ -2,7 +2,7 @@ import streamlit as st
 from services.supabase_client import supabase
 from components.sidebar import show_sidebar
 from pages_custom import dashboard, relatorio_semanal
-from components import admin_panel
+from components.admin_panel import render as render_admin_panel
 
 # -----------------------------------------------------------------------------
 # 1) CONFIGURAÇÃO INICIAL
@@ -77,6 +77,6 @@ if page == "Dashboard":
 elif page == "Relatório Semanal":
     relatorio_semanal.render()
 elif page == "Administração":
-    admin_panel.render()
+    render_admin_panel()
 else:
     st.warning("Página não encontrada.")
