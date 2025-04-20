@@ -1,10 +1,10 @@
 import streamlit as st
-from .fund_management import render_fund_management
-from .account_management import render_account_management
-from .upload_panel import render_upload_panel
-from .imported_files_panel import render_imported_files_panel
-from .manual_entries_panel import render_manual_entries_panel
-from .render_history_panel import render_history_panel
+from .admin_panel.fund_management import render_fund_management
+from .admin_panel.account_management import render_account_management
+from .admin_panel.upload_panel import render_upload_panel
+from .admin_panel.imported_files_panel import render_imported_files_panel
+from .admin_panel.manual_entries_panel import render_manual_entries_panel
+from .admin_panel.render_history_panel import render_history_panel
 
 
 def render():
