@@ -17,7 +17,6 @@ from services.supabase_client import (
 # ---------------------------------
 def format_currency_br(value: float) -> str:
     s = f"{value:,.2f}"
-    # troca separadores: ',' -> temporário, '.' -> ',', temporário -> '.'
     return "R$ " + s.replace(",", "X").replace(".", ",").replace("X", ".")
 
 # ---------------------------------
@@ -126,7 +125,6 @@ def render() -> None:
         dias = int(period.split()[1])
         end = date.today()
         start = end - timedelta(days=dias)
-        # limita ao intervalo disponível
         start = max(start, min_date)
         end = min(end, max_date)
     else:
@@ -169,7 +167,11 @@ def render() -> None:
             .encode(
                 x=alt.X("date:T", title="Data"),
                 y=alt.Y("amount:Q", title="Valor"),
-                color=alt.Color("type:N", title="Tipo"),
+                color=alt.Color(
+                    "type:N",
+                    title="Tipo",
+                    scale=alt.Scale(domain=["Entrada", "Saída"], range=["green", "red"])
+                ),
                 tooltip=[
                     alt.Tooltip("date:T", title="Data"),
                     alt.Tooltip("amount:Q", title="Valor", format=",.2f"),
