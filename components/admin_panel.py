@@ -4,7 +4,7 @@ from .account_management import render_account_management
 from .upload_panel import render_upload_panel
 from .imported_files_panel import render_imported_files_panel
 from .manual_entries_panel import render_manual_entries_panel
-from .history_panel import render_history_panel
+from .render_history_panel import render_history_panel
 
 
 def render():
