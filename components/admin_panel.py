@@ -15,7 +15,7 @@ from services.supabase_client import (
     delete_file_records,
 )
 from utils.transforms import filter_already_imported_by_file, filter_new_transactions
-from streamlit.runtime.scriptrunner import request_rerun
+
 
 
 
@@ -258,7 +258,6 @@ def render() -> None:
                         .execute()
                     get_transactions.clear()
                     st.success("Transação removida.")
-                    request_rerun()
                     # não precisa chamar rerun — o clique já reruna o app
         else:
             st.info("Nenhuma transação manual encontrada.")
@@ -291,7 +290,6 @@ def render() -> None:
                         .execute()
                     get_saldos.clear()
                     st.success("Saldo removido.")
-                    request_rerun()
                     # novamente, só clicar já reruna o app
         else:
             st.info("Nenhum saldo manual encontrado.")
