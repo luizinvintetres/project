@@ -17,6 +17,7 @@ from services.supabase_client import (
 # ---------------------------------
 def format_currency_br(value: float) -> str:
     s = f"{value:,.2f}"
+    # troca separadores: ',' -> temporário, '.' -> ',', temporário -> '.'
     return "R$ " + s.replace(",", "X").replace(".", ",").replace("X", ".")
 
 # ---------------------------------
@@ -52,6 +53,7 @@ def _metrics(df: pd.DataFrame, start_date: date, saldos_df: pd.DataFrame) -> Non
     col1.metric("Entradas", format_currency_br(total_in))
     col2.metric("Saídas", format_currency_br(abs(total_out)))
     col3.metric("Saldo Líquido", format_currency_br(net))
+
     opening = saldos_df.loc[saldos_df["date"] == start_date, "opening_balance"].sum()
     col4.metric("Saldo Abertura", format_currency_br(opening))
 
@@ -60,6 +62,8 @@ def _metrics(df: pd.DataFrame, start_date: date, saldos_df: pd.DataFrame) -> Non
 # ---------------------------------
 def render() -> None:
     st.header("📊 Dashboard Geral")
+
+    # Carrega dados
     tx = _load_transactions()
     acc = _load_accounts()
     funds = _load_funds()
@@ -72,6 +76,7 @@ def render() -> None:
         st.warning("Tabela de saldos não disponível.")
         return
 
+    # Monta DataFrame
     df = (
         tx
         .merge(acc, on="acct_id", how="left")
@@ -85,6 +90,7 @@ def render() -> None:
         .rename(columns={"nickname": "account", "name": "fund"})
     )
 
+    # Filtros de fundo e conta
     sel_fund = st.multiselect("Fundos", sorted(df["fund"].dropna().unique()))
     if sel_fund:
         df = df[df["fund"].isin(sel_fund)]
@@ -99,9 +105,11 @@ def render() -> None:
         st.warning("Nenhuma transação encontrada para os filtros aplicados.")
         return
 
+    # Ajusta datas
     df["date"] = pd.to_datetime(df["date"]).dt.date
     min_date, max_date = df["date"].min(), df["date"].max()
 
+    # Menu de período
     period = st.selectbox(
         "Período de Visualização",
         [
@@ -118,6 +126,7 @@ def render() -> None:
         dias = int(period.split()[1])
         end = date.today()
         start = end - timedelta(days=dias)
+        # limita ao intervalo disponível
         start = max(start, min_date)
         end = min(end, max_date)
     else:
@@ -130,6 +139,7 @@ def render() -> None:
         if isinstance(start, tuple):
             start, end = start
 
+    # Filtra por data
     mask = (df["date"] >= start) & (df["date"] <= end)
     df = df.loc[mask]
     sal_df = sal_df.loc[(sal_df["date"] >= start) & (sal_df["date"] <= end)]
@@ -138,8 +148,10 @@ def render() -> None:
         st.warning("Nenhuma transação no intervalo selecionado.")
         return
 
+    # Métricas
     _metrics(df, start, sal_df)
 
+    # Prepara dados para gráfico
     df["type"] = df["amount"].apply(lambda x: "Entrada" if x > 0 else "Saída")
     df_daily = (
         df.groupby(["date", "type"])["amount"]
@@ -157,14 +169,10 @@ def render() -> None:
             .encode(
                 x=alt.X("date:T", title="Data"),
                 y=alt.Y("amount:Q", title="Valor"),
-                color=alt.Color(
-                    "type:N",
-                    title="Tipo",
-                    scale=alt.Scale(domain=["Entrada", "Saída"], range=["green", "red"])
-                ),
+                color=alt.Color("type:N", title="Tipo"),
                 tooltip=[
                     alt.Tooltip("date:T", title="Data"),
-                    alt.Tooltip("amount:Q", title="Valor", format=",\ .2f"),
+                    alt.Tooltip("amount:Q", title="Valor", format=",.2f"),
                     alt.Tooltip("type:N", title="Tipo"),
                 ],
             )
@@ -173,6 +181,7 @@ def render() -> None:
         )
         st.altair_chart(chart, use_container_width=True)
 
+    # Exibição de tabelas com formatação BR
     st.subheader("Saldos de Abertura")
     df_saldo = sal_df[["date", "fund", "account", "opening_balance"]].copy()
     df_saldo["opening_balance"] = df_saldo["opening_balance"].apply(format_currency_br)
