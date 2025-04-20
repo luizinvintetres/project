@@ -74,6 +74,6 @@ def render_history_panel(user_email: str) -> None:
                         .execute()
                     get_saldos.clear()
                     st.success("Saldo removido.")
-                    st.experimental_rerun()
+                    st.rerun()
         else:
             st.info("Nenhum saldo manual encontrado.")
