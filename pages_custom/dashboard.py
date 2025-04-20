@@ -165,7 +165,10 @@ def render() -> None:
             alt.Chart(df_daily)
             .mark_bar()
             .encode(
-                x=alt.X("date:T", title="Data"),
+                x=alt.X(
+                    "date:T", title="Data",
+                    axis=alt.Axis(format="%d/%m")
+                ),
                 y=alt.Y("amount:Q", title="Valor"),
                 color=alt.Color(
                     "type:N",
@@ -173,7 +176,7 @@ def render() -> None:
                     scale=alt.Scale(domain=["Entrada", "Saída"], range=["green", "red"])
                 ),
                 tooltip=[
-                    alt.Tooltip("date:T", title="Data"),
+                    alt.Tooltip("date:T", title="Data", format="%d/%m/%Y"),
                     alt.Tooltip("amount:Q", title="Valor", format=",.2f"),
                     alt.Tooltip("type:N", title="Tipo"),
                 ],
