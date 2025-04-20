@@ -43,6 +43,7 @@ def render_history_panel(user_email: str) -> None:
                         .execute()
                     get_transactions.clear()
                     st.success("Transação removida.")
+                    st.rerun()
         else:
             st.info("Nenhuma transação manual encontrada.")
 
